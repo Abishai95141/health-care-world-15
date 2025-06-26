@@ -7,9 +7,12 @@ import { Badge } from '@/components/ui/badge';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { TopProductsDrawer } from './TopProductsDrawer';
+import { ProductDetailDrawer } from './ProductDetailDrawer';
 
 export const TopProductsSection = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [selectedProductName, setSelectedProductName] = useState('');
 
   const { data: topProducts, isLoading } = useQuery({
     queryKey: ['top-products-preview'],
@@ -26,6 +29,16 @@ export const TopProductsSection = () => {
       })) || [];
     }
   });
+
+  const handleProductClick = (productId: string, productName: string) => {
+    setSelectedProductId(productId);
+    setSelectedProductName(productName);
+  };
+
+  const handleCloseProductDetail = () => {
+    setSelectedProductId(null);
+    setSelectedProductName('');
+  };
 
   if (isLoading) {
     return (
@@ -46,8 +59,21 @@ export const TopProductsSection = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: index * 0.1 }}
               whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
-              <Card className="shadow-md hover:shadow-lg transition-all duration-200 rounded-xl">
+              <Card 
+                className="shadow-md hover:shadow-lg transition-all duration-200 rounded-xl cursor-pointer"
+                onClick={() => handleProductClick(product.id, product.name)}
+                role="button"
+                tabIndex={0}
+                aria-label={`View details for ${product.name}`}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleProductClick(product.id, product.name);
+                  }
+                }}
+              >
                 <CardContent className="p-4">
                   <div className="space-y-3">
                     <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center">
@@ -98,6 +124,12 @@ export const TopProductsSection = () => {
       <TopProductsDrawer 
         open={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
+      />
+
+      <ProductDetailDrawer
+        productId={selectedProductId}
+        productName={selectedProductName}
+        onClose={handleCloseProductDetail}
       />
     </>
   );
