@@ -21,6 +21,7 @@ import {
   YAxis, 
   CartesianGrid, 
   Tooltip, 
+  Legend,
   ResponsiveContainer,
   AreaChart,
   Area,
@@ -165,7 +166,7 @@ const DataAssistant = () => {
     }
 
     const colors = ['#27AE60', '#3498DB', '#E74C3C', '#F39C12', '#9B59B6', '#1ABC9C', '#34495E', '#E67E22'];
-    const { data, type, xKey = 'name', yKey = 'value', yKey2 } = chartSpec;
+    const { data, type = 'bar', xKey = 'name', yKey = 'value', yKey2 } = chartSpec;
 
     const CustomTooltip = ({ active, payload, label }: any) => {
       if (active && payload && payload.length) {
@@ -196,6 +197,7 @@ const DataAssistant = () => {
               <XAxis dataKey={xKey} stroke="#6b7280" fontSize={12} />
               <YAxis stroke="#6b7280" fontSize={12} />
               <Tooltip content={<CustomTooltip />} />
+              <Legend />
               <Line 
                 type="monotone" 
                 dataKey={yKey} 
@@ -226,6 +228,7 @@ const DataAssistant = () => {
               <XAxis dataKey={xKey} stroke="#6b7280" fontSize={12} />
               <YAxis stroke="#6b7280" fontSize={12} />
               <Tooltip content={<CustomTooltip />} />
+              <Legend />
               <Bar dataKey={yKey} fill="#27AE60" radius={[4, 4, 0, 0]} />
               {yKey2 && (
                 <Bar dataKey={yKey2} fill="#3498DB" radius={[4, 4, 0, 0]} />
@@ -252,6 +255,7 @@ const DataAssistant = () => {
                 ))}
               </Pie>
               <Tooltip content={<CustomTooltip />} />
+              <Legend />
             </RechartsPieChart>
           </ResponsiveContainer>
         );
@@ -264,6 +268,7 @@ const DataAssistant = () => {
               <XAxis dataKey={xKey} stroke="#6b7280" fontSize={12} />
               <YAxis stroke="#6b7280" fontSize={12} />
               <Tooltip content={<CustomTooltip />} />
+              <Legend />
               <Area 
                 type="monotone" 
                 dataKey={yKey} 
@@ -292,6 +297,7 @@ const DataAssistant = () => {
           <ResponsiveContainer width="100%" height={300}>
             <RadialBarChart cx="50%" cy="50%" innerRadius="40%" outerRadius="80%" data={data}>
               <RadialBar dataKey={yKey} cornerRadius={10} fill="#27AE60" />
+              <Legend />
               <Tooltip content={<CustomTooltip />} />
             </RadialBarChart>
           </ResponsiveContainer>
@@ -332,6 +338,7 @@ const DataAssistant = () => {
               <XAxis dataKey={xKey} stroke="#6b7280" fontSize={12} />
               <YAxis stroke="#6b7280" fontSize={12} />
               <Tooltip content={<CustomTooltip />} />
+              <Legend />
               <Bar dataKey={yKey} fill="#27AE60" />
               <Line type="monotone" dataKey={yKey2 || yKey} stroke="#3498DB" strokeWidth={2} />
             </ComposedChart>
@@ -346,6 +353,7 @@ const DataAssistant = () => {
               <XAxis dataKey={xKey} stroke="#6b7280" fontSize={12} />
               <YAxis stroke="#6b7280" fontSize={12} />
               <Tooltip content={<CustomTooltip />} />
+              <Legend />
               <Bar dataKey={yKey} fill="#27AE60" radius={[4, 4, 0, 0]} />
               {yKey2 && (
                 <Bar dataKey={yKey2} fill="#3498DB" radius={[4, 4, 0, 0]} />

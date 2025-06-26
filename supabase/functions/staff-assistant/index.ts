@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
@@ -78,47 +79,32 @@ async function getComprehensiveContext(query: string): Promise<string> {
     const contexts: string[] = [];
     const queryLower = query.toLowerCase();
     
-    // Determine exact time range based on query
-    let timeCondition = '';
-    let dateRange = 'all time';
+    // Get current date and time information
     const now = new Date();
+    const currentDate = now.toISOString().split('T')[0];
     
-    if (queryLower.includes('today')) {
-      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      timeCondition = `AND created_at >= '${todayStart.toISOString()}'`;
-      dateRange = 'today';
-    } else if (queryLower.includes('yesterday')) {
-      const yesterdayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-      const yesterdayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      timeCondition = `AND created_at >= '${yesterdayStart.toISOString()}' AND created_at < '${yesterdayEnd.toISOString()}'`;
-      dateRange = 'yesterday';
-    } else if (queryLower.includes('this week')) {
-      const weekStart = new Date(now);
-      weekStart.setDate(now.getDate() - now.getDay()); // Start of this week (Sunday)
-      weekStart.setHours(0, 0, 0, 0);
-      timeCondition = `AND created_at >= '${weekStart.toISOString()}'`;
-      dateRange = 'this week';
-    } else if (queryLower.includes('last week')) {
-      const lastWeekStart = new Date(now);
-      lastWeekStart.setDate(now.getDate() - now.getDay() - 7); // Start of last week
-      lastWeekStart.setHours(0, 0, 0, 0);
-      const lastWeekEnd = new Date(now);
-      lastWeekEnd.setDate(now.getDate() - now.getDay()); // End of last week
-      lastWeekEnd.setHours(0, 0, 0, 0);
-      timeCondition = `AND created_at >= '${lastWeekStart.toISOString()}' AND created_at < '${lastWeekEnd.toISOString()}'`;
-      dateRange = 'last week';
-    } else if (queryLower.includes('this month')) {
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      timeCondition = `AND created_at >= '${monthStart.toISOString()}'`;
-      dateRange = 'this month';
-    } else if (queryLower.includes('last month')) {
-      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 1);
-      timeCondition = `AND created_at >= '${lastMonthStart.toISOString()}' AND created_at < '${lastMonthEnd.toISOString()}'`;
-      dateRange = 'last month';
-    }
+    // Define precise date ranges
+    const thisWeekStart = new Date(now);
+    thisWeekStart.setDate(now.getDate() - now.getDay()); // Start of this week (Sunday)
+    thisWeekStart.setHours(0, 0, 0, 0);
     
-    // Get orders data with proper time filtering
+    const lastWeekStart = new Date(now);
+    lastWeekStart.setDate(now.getDate() - now.getDay() - 7); // Start of last week
+    lastWeekStart.setHours(0, 0, 0, 0);
+    
+    const lastWeekEnd = new Date(now);
+    lastWeekEnd.setDate(now.getDate() - now.getDay()); // End of last week
+    lastWeekEnd.setHours(0, 0, 0, 0);
+    
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 1);
+    
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterdayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+    const yesterdayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    // Get orders data - always fetch comprehensive data
     const { data: orders } = await supabase
       .from('orders')
       .select(`
@@ -130,61 +116,29 @@ async function getComprehensiveContext(query: string): Promise<string> {
       `)
       .eq('status', 'confirmed')
       .order('created_at', { ascending: false })
-      .limit(1000); // Get more data for proper analysis
+      .limit(2000); // Fetch more comprehensive data
 
     if (orders && orders.length > 0) {
-      // Filter orders in memory for exact date ranges if needed
-      let filteredOrders = orders;
-      
-      if (timeCondition) {
-        const startDate = timeCondition.includes('>=') ? 
-          new Date(timeCondition.split("'")[1]) : null;
-        const endDate = timeCondition.includes('< ') ? 
-          new Date(timeCondition.split("'")[3]) : null;
-          
-        filteredOrders = orders.filter(order => {
-          const orderDate = new Date(order.created_at);
-          if (startDate && endDate) {
-            return orderDate >= startDate && orderDate < endDate;
-          } else if (startDate) {
-            return orderDate >= startDate;
-          }
-          return true;
-        });
-      }
-      
-      const totalRevenue = filteredOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
-      const totalOrders = filteredOrders.length;
+      const totalRevenue = orders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
+      const totalOrders = orders.length;
       const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
       
-      const startDate = filteredOrders.length > 0 ? 
-        new Date(Math.min(...filteredOrders.map(o => new Date(o.created_at).getTime()))).toLocaleDateString() : 
+      const startDate = orders.length > 0 ? 
+        new Date(Math.min(...orders.map(o => new Date(o.created_at).getTime()))).toLocaleDateString() : 
         'N/A';
-      const endDate = filteredOrders.length > 0 ? 
-        new Date(Math.max(...filteredOrders.map(o => new Date(o.created_at).getTime()))).toLocaleDateString() : 
+      const endDate = orders.length > 0 ? 
+        new Date(Math.max(...orders.map(o => new Date(o.created_at).getTime()))).toLocaleDateString() : 
         'N/A';
       
-      contexts.push(`Sales Summary (${dateRange}):
+      contexts.push(`Sales Summary (All Time Dataset):
         - Total Revenue: ₹${totalRevenue.toFixed(2)}
         - Total Orders: ${totalOrders}
         - Average Order Value: ₹${avgOrderValue.toFixed(2)}
-        - Date Range: ${dateRange === 'all time' ? `${startDate} to ${endDate}` : dateRange}
-        - Orders Detail: ${JSON.stringify(filteredOrders.slice(0, 10))}`);
+        - Data Range: ${startDate} to ${endDate}
+        - Current Date: ${currentDate}`);
         
-      // For comparison queries, get both periods
-      if (queryLower.includes('compare') && (queryLower.includes('week') || queryLower.includes('month'))) {
-        const thisWeekStart = new Date(now);
-        thisWeekStart.setDate(now.getDate() - now.getDay());
-        thisWeekStart.setHours(0, 0, 0, 0);
-        
-        const lastWeekStart = new Date(now);
-        lastWeekStart.setDate(now.getDate() - now.getDay() - 7);
-        lastWeekStart.setHours(0, 0, 0, 0);
-        
-        const lastWeekEnd = new Date(now);
-        lastWeekEnd.setDate(now.getDate() - now.getDay());
-        lastWeekEnd.setHours(0, 0, 0, 0);
-        
+      // For comparison queries, provide both periods with precise filtering
+      if (queryLower.includes('compare') || queryLower.includes('week') || queryLower.includes('vs')) {
         const thisWeekOrders = orders.filter(order => {
           const orderDate = new Date(order.created_at);
           return orderDate >= thisWeekStart;
@@ -198,10 +152,65 @@ async function getComprehensiveContext(query: string): Promise<string> {
         const thisWeekRevenue = thisWeekOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
         const lastWeekRevenue = lastWeekOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
         
+        const growthRate = lastWeekRevenue > 0 ? ((thisWeekRevenue - lastWeekRevenue) / lastWeekRevenue * 100) : 0;
+        
         contexts.push(`Weekly Comparison Data:
-          - This Week: ${thisWeekOrders.length} orders, ₹${thisWeekRevenue.toFixed(2)} revenue
-          - Last Week: ${lastWeekOrders.length} orders, ₹${lastWeekRevenue.toFixed(2)} revenue
-          - Growth: ${thisWeekRevenue > 0 && lastWeekRevenue > 0 ? ((thisWeekRevenue - lastWeekRevenue) / lastWeekRevenue * 100).toFixed(1) : 0}%`);
+          - This Week (${thisWeekStart.toLocaleDateString()} onwards): ${thisWeekOrders.length} orders, ₹${thisWeekRevenue.toFixed(2)} revenue
+          - Last Week (${lastWeekStart.toLocaleDateString()} to ${lastWeekEnd.toLocaleDateString()}): ${lastWeekOrders.length} orders, ₹${lastWeekRevenue.toFixed(2)} revenue
+          - Growth Rate: ${growthRate.toFixed(1)}%
+          - This Week Orders: ${JSON.stringify(thisWeekOrders.slice(0, 5))}
+          - Last Week Orders: ${JSON.stringify(lastWeekOrders.slice(0, 5))}`);
+      }
+      
+      // Handle specific time range queries
+      if (queryLower.includes('today')) {
+        const todayOrders = orders.filter(order => {
+          const orderDate = new Date(order.created_at);
+          return orderDate >= todayStart;
+        });
+        const todayRevenue = todayOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
+        
+        contexts.push(`Today's Data (${todayStart.toLocaleDateString()}):
+          - Orders: ${todayOrders.length}
+          - Revenue: ₹${todayRevenue.toFixed(2)}
+          - Details: ${JSON.stringify(todayOrders.slice(0, 3))}`);
+      }
+      
+      if (queryLower.includes('yesterday')) {
+        const yesterdayOrders = orders.filter(order => {
+          const orderDate = new Date(order.created_at);
+          return orderDate >= yesterdayStart && orderDate < yesterdayEnd;
+        });
+        const yesterdayRevenue = yesterdayOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
+        
+        contexts.push(`Yesterday's Data (${yesterdayStart.toLocaleDateString()}):
+          - Orders: ${yesterdayOrders.length}
+          - Revenue: ₹${yesterdayRevenue.toFixed(2)}
+          - Details: ${JSON.stringify(yesterdayOrders.slice(0, 3))}`);
+      }
+      
+      if (queryLower.includes('this month')) {
+        const thisMonthOrders = orders.filter(order => {
+          const orderDate = new Date(order.created_at);
+          return orderDate >= thisMonthStart;
+        });
+        const thisMonthRevenue = thisMonthOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
+        
+        contexts.push(`This Month's Data (${thisMonthStart.toLocaleDateString()} onwards):
+          - Orders: ${thisMonthOrders.length}
+          - Revenue: ₹${thisMonthRevenue.toFixed(2)}`);
+      }
+      
+      if (queryLower.includes('last month')) {
+        const lastMonthOrders = orders.filter(order => {
+          const orderDate = new Date(order.created_at);
+          return orderDate >= lastMonthStart && orderDate < lastMonthEnd;
+        });
+        const lastMonthRevenue = lastMonthOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
+        
+        contexts.push(`Last Month's Data (${lastMonthStart.toLocaleDateString()} to ${lastMonthEnd.toLocaleDateString()}):
+          - Orders: ${lastMonthOrders.length}
+          - Revenue: ₹${lastMonthRevenue.toFixed(2)}`);
       }
     }
 
@@ -215,7 +224,7 @@ async function getComprehensiveContext(query: string): Promise<string> {
         `)
         .eq('is_active', true)
         .order('created_at', { ascending: false })
-        .limit(50);
+        .limit(100);
       
       if (products) {
         const productsWithStats = products.map(product => {
@@ -232,7 +241,7 @@ async function getComprehensiveContext(query: string): Promise<string> {
           };
         });
         
-        contexts.push(`Product Performance Data: ${JSON.stringify(productsWithStats)}`);
+        contexts.push(`Product Performance Data: ${JSON.stringify(productsWithStats.slice(0, 20))}`);
       }
     }
 
@@ -245,22 +254,22 @@ async function getComprehensiveContext(query: string): Promise<string> {
         .from('profiles')
         .select('id, full_name, email, created_at')
         .order('created_at', { ascending: false })
-        .limit(20);
+        .limit(50);
       
       if (customerStats || allProfiles) {
         contexts.push(`Customer Analytics:
           - Stats: ${JSON.stringify(customerStats)}
-          - Recent Customers: ${JSON.stringify(allProfiles)}`);
+          - Recent Customers: ${JSON.stringify(allProfiles?.slice(0, 10))}`);
       }
     }
 
     // Get category and brand performance
     if (queryLower.includes('category') || queryLower.includes('brand') || queryLower.includes('performance')) {
       const { data: topCategories } = await supabase
-        .rpc('get_top_categories', { limit_count: 15 });
+        .rpc('get_top_categories', { limit_count: 20 });
       
       const { data: topBrands } = await supabase
-        .rpc('get_top_brands', { limit_count: 15 });
+        .rpc('get_top_brands', { limit_count: 20 });
       
       if (topCategories || topBrands) {
         contexts.push(`Performance Data:
@@ -336,6 +345,26 @@ CHART SPECIFICATIONS:
     "yKey2": "orders"
   }
 
+WEEKLY COMPARISON CHART RULES:
+- ALWAYS return type="chart" for weekly comparison queries
+- Create chartSpec with both periods showing revenue and orders
+- Use proper data structure with distinct periods
+- Include both yKey (revenue) and yKey2 (orders) for dual-axis charts
+- Example for "Compare this week vs last week":
+  {
+    "type": "chart",
+    "chartSpec": {
+      "type": "bar",
+      "data": [
+        {"period": "This Week", "revenue": [actual_this_week_revenue], "orders": [actual_this_week_orders]},
+        {"period": "Last Week", "revenue": [actual_last_week_revenue], "orders": [actual_last_week_orders]}
+      ],
+      "xKey": "period",
+      "yKey": "revenue",
+      "yKey2": "orders"
+    }
+  }
+
 FOLLOW-UP ACTIONS:
 - Suggest 2-3 relevant next steps as quick-reply buttons
 - Include drill-down options and comparative analysis
@@ -345,7 +374,12 @@ Current data context: ${context}
 
 Previous conversation context: ${JSON.stringify(previousContext || {})}
 
-IMPORTANT: Always provide actual figures from the data. If data shows zero values, report them accurately and suggest reasons or alternative queries. For weekly comparisons, always create charts that show both periods clearly with different colors.
+IMPORTANT: 
+- Always provide actual figures from the data
+- If data shows zero values, report them accurately and suggest reasons or alternative queries
+- For weekly comparisons, ALWAYS create charts that show both periods clearly with different colors
+- Extract real numbers from the context data and use them in your response
+- If asked about weekly comparison, extract the actual revenue and order numbers from the context and create a proper chartSpec
 
 Respond only with valid JSON in the exact format specified.`;
 
