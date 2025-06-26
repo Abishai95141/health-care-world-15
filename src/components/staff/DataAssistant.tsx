@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, ArrowLeft, MessageCircle, Loader2, User, Bot, TrendingUp, BarChart3, PieChart, Activity } from 'lucide-react';
@@ -9,7 +8,28 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useStaffAuth } from '@/contexts/StaffAuthContext';
-import { LineChart, Line, BarChart, Bar, PieChart as RechartsPieChart, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { 
+  LineChart, 
+  Line, 
+  BarChart, 
+  Bar, 
+  PieChart as RechartsPieChart, 
+  Cell, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  RadialBarChart,
+  RadialBar,
+  FunnelChart,
+  Funnel,
+  ScatterChart,
+  Scatter,
+  ComposedChart
+} from 'recharts';
 
 interface Message {
   id: string;
@@ -137,25 +157,45 @@ const DataAssistant = () => {
   };
 
   const renderChart = (chartSpec: any) => {
-    if (!chartSpec || !chartSpec.data) return null;
+    if (!chartSpec || !chartSpec.data || !Array.isArray(chartSpec.data)) {
+      return <div className="text-sm text-gray-500">No chart data available</div>;
+    }
 
-    const colors = ['#27AE60', '#3498DB', '#E74C3C', '#F39C12', '#9B59B6', '#1ABC9C'];
-    
-    switch (chartSpec.type) {
+    const colors = ['#27AE60', '#3498DB', '#E74C3C', '#F39C12', '#9B59B6', '#1ABC9C', '#34495E', '#E67E22'];
+    const { data, type, xKey = 'name', yKey = 'value' } = chartSpec;
+
+    const CustomTooltip = ({ active, payload, label }: any) => {
+      if (active && payload && payload.length) {
+        return (
+          <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+            <p className="font-medium text-gray-900 mb-1">{label}</p>
+            {payload.map((entry: any, index: number) => (
+              <p key={index} style={{ color: entry.color }} className="text-sm">
+                {entry.name}: {typeof entry.value === 'number' ? entry.value.toLocaleString() : entry.value}
+              </p>
+            ))}
+          </div>
+        );
+      }
+      return null;
+    };
+
+    switch (type?.toLowerCase()) {
       case 'line':
         return (
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={chartSpec.data}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey={chartSpec.xKey || 'name'} />
-              <YAxis />
-              <Tooltip />
+            <LineChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey={xKey} stroke="#6b7280" fontSize={12} />
+              <YAxis stroke="#6b7280" fontSize={12} />
+              <Tooltip content={<CustomTooltip />} />
               <Line 
                 type="monotone" 
-                dataKey={chartSpec.yKey || 'value'} 
+                dataKey={yKey} 
                 stroke="#27AE60" 
                 strokeWidth={2}
                 dot={{ fill: '#27AE60', strokeWidth: 2, r: 4 }}
+                activeDot={{ r: 6, stroke: '#27AE60', strokeWidth: 2 }}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -164,12 +204,12 @@ const DataAssistant = () => {
       case 'bar':
         return (
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartSpec.data}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey={chartSpec.xKey || 'name'} />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey={chartSpec.yKey || 'value'} fill="#27AE60" />
+            <BarChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey={xKey} stroke="#6b7280" fontSize={12} />
+              <YAxis stroke="#6b7280" fontSize={12} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey={yKey} fill="#27AE60" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         );
@@ -179,26 +219,108 @@ const DataAssistant = () => {
           <ResponsiveContainer width="100%" height={300}>
             <RechartsPieChart>
               <RechartsPieChart 
-                data={chartSpec.data}
+                data={data}
                 cx="50%"
                 cy="50%"
                 labelLine={false}
                 outerRadius={80}
                 fill="#8884d8"
-                dataKey={chartSpec.yKey || 'value'}
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                dataKey={yKey}
+                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(1)}%`}
               >
-                {chartSpec.data.map((entry: any, index: number) => (
+                {data.map((entry: any, index: number) => (
                   <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
                 ))}
               </RechartsPieChart>
-              <Tooltip />
+              <Tooltip content={<CustomTooltip />} />
             </RechartsPieChart>
+          </ResponsiveContainer>
+        );
+
+      case 'area':
+        return (
+          <ResponsiveContainer width="100%" height={300}>
+            <AreaChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey={xKey} stroke="#6b7280" fontSize={12} />
+              <YAxis stroke="#6b7280" fontSize={12} />
+              <Tooltip content={<CustomTooltip />} />
+              <Area 
+                type="monotone" 
+                dataKey={yKey} 
+                stroke="#27AE60" 
+                fill="#27AE60" 
+                fillOpacity={0.3}
+                strokeWidth={2}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        );
+
+      case 'radialbar':
+      case 'gauge':
+        return (
+          <ResponsiveContainer width="100%" height={300}>
+            <RadialBarChart cx="50%" cy="50%" innerRadius="40%" outerRadius="80%" data={data}>
+              <RadialBar dataKey={yKey} cornerRadius={10} fill="#27AE60" />
+              <Tooltip content={<CustomTooltip />} />
+            </RadialBarChart>
+          </ResponsiveContainer>
+        );
+
+      case 'funnel':
+        return (
+          <ResponsiveContainer width="100%" height={300}>
+            <FunnelChart>
+              <Tooltip content={<CustomTooltip />} />
+              <Funnel dataKey={yKey} data={data} isAnimationActive>
+                {data.map((entry: any, index: number) => (
+                  <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                ))}
+              </Funnel>
+            </FunnelChart>
+          </ResponsiveContainer>
+        );
+
+      case 'scatter':
+        return (
+          <ResponsiveContainer width="100%" height={300}>
+            <ScatterChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey={xKey} stroke="#6b7280" fontSize={12} />
+              <YAxis dataKey={yKey} stroke="#6b7280" fontSize={12} />
+              <Tooltip content={<CustomTooltip />} />
+              <Scatter fill="#27AE60" />
+            </ScatterChart>
+          </ResponsiveContainer>
+        );
+
+      case 'composed':
+        return (
+          <ResponsiveContainer width="100%" height={300}>
+            <ComposedChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey={xKey} stroke="#6b7280" fontSize={12} />
+              <YAxis stroke="#6b7280" fontSize={12} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey={yKey} fill="#27AE60" />
+              <Line type="monotone" dataKey={yKey} stroke="#3498DB" strokeWidth={2} />
+            </ComposedChart>
           </ResponsiveContainer>
         );
       
       default:
-        return <div className="text-sm text-gray-500">Chart type not supported</div>;
+        return (
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey={xKey} stroke="#6b7280" fontSize={12} />
+              <YAxis stroke="#6b7280" fontSize={12} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey={yKey} fill="#27AE60" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        );
     }
   };
 
@@ -253,7 +375,12 @@ const DataAssistant = () => {
               </div>
               
               {message.insights && message.insights.length > 0 && (
-                <div className="mt-3 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.4, delay: 0.1 }}
+                  className="mt-3 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400"
+                >
                   <div className="flex items-center gap-2 text-blue-800 font-medium mb-1">
                     <TrendingUp className="w-4 h-4" />
                     Key Insights
@@ -261,17 +388,22 @@ const DataAssistant = () => {
                   {message.insights.map((insight, idx) => (
                     <div key={idx} className="text-sm text-blue-700">• {insight}</div>
                   ))}
-                </div>
+                </motion.div>
               )}
               
               {message.chartSpec && (
-                <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                  className="mt-4 p-4 bg-gray-50 rounded-lg border"
+                >
                   <div className="flex items-center gap-2 text-gray-700 font-medium mb-3">
                     <BarChart3 className="w-4 h-4" />
                     Data Visualization
                   </div>
                   {renderChart(message.chartSpec)}
-                </div>
+                </motion.div>
               )}
               
               {message.actions && message.actions.length > 0 && (
