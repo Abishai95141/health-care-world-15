@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,12 +27,21 @@ import { SalesDetailPanel } from '@/components/staff/analytics/SalesDetailPanel'
 import { AOVGauge } from '@/components/staff/analytics/AOVGauge';
 import { InventoryTurnoverChart } from '@/components/staff/analytics/InventoryTurnoverChart';
 import { StockoutDrawer } from '@/components/staff/analytics/StockoutDrawer';
+import { InventoryKPICards } from '@/components/staff/analytics/InventoryKPICards';
+import { ExpiringProductsDrawer } from '@/components/staff/analytics/ExpiringProductsDrawer';
+import { CustomerEngagementCards } from '@/components/staff/analytics/CustomerEngagementCards';
+import { RatingsModal } from '@/components/staff/analytics/RatingsModal';
+import { RecentReviewsFeed } from '@/components/staff/analytics/RecentReviewsFeed';
+import { TopRatedProducts } from '@/components/staff/analytics/TopRatedProducts';
+import { CartAbandonmentChart } from '@/components/staff/analytics/CartAbandonmentChart';
 
 const Analytics = () => {
   const [isReturningCustomersOpen, setIsReturningCustomersOpen] = useState(false);
   const [isNewCustomersOpen, setIsNewCustomersOpen] = useState(false);
   const [isAllCustomersOpen, setIsAllCustomersOpen] = useState(false);
   const [isStockoutOpen, setIsStockoutOpen] = useState(false);
+  const [isExpiringProductsOpen, setIsExpiringProductsOpen] = useState(false);
+  const [isRatingsModalOpen, setIsRatingsModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
@@ -51,13 +59,40 @@ const Analytics = () => {
             <p className="text-gray-600">Comprehensive insights into your business performance</p>
           </motion.div>
 
-          {/* KPI Cards */}
+          {/* Original KPI Cards */}
           <KPICards 
             onReturningCustomersClick={() => setIsReturningCustomersOpen(true)}
             onNewCustomersClick={() => setIsNewCustomersOpen(true)}
             onAllCustomersClick={() => setIsAllCustomersOpen(true)}
             onStockoutClick={() => setIsStockoutOpen(true)}
           />
+
+          {/* New Inventory KPI Cards */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+          >
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Inventory Analytics</h2>
+            <InventoryKPICards 
+              onExpiringProductsClick={() => setIsExpiringProductsOpen(true)}
+            />
+          </motion.div>
+
+          {/* Customer Engagement KPIs */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Customer Engagement</h2>
+            <CustomerEngagementCards
+              onNewCustomersClick={() => setIsNewCustomersOpen(true)}
+              onReturningCustomersClick={() => setIsReturningCustomersOpen(true)}
+              onAllCustomersClick={() => setIsAllCustomersOpen(true)}
+              onRatingsClick={() => setIsRatingsModalOpen(true)}
+            />
+          </motion.div>
 
           {/* Charts Section */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -156,6 +191,15 @@ const Analytics = () => {
                 </CardContent>
               </Card>
             </motion.div>
+
+            {/* Cart Abandonment Chart */}
+            <motion.div
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.5 }}
+            >
+              <CartAbandonmentChart />
+            </motion.div>
           </div>
 
           {/* Sales Detail Panel */}
@@ -168,11 +212,30 @@ const Analytics = () => {
             )}
           </AnimatePresence>
 
+          {/* Recent Reviews Feed */}
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.6 }}
+          >
+            <RecentReviewsFeed />
+          </motion.div>
+
+          {/* Top Rated Products Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.7 }}
+          >
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Product Performance</h2>
+            <TopRatedProducts />
+          </motion.div>
+
           {/* Top Products Section */}
           <motion.div
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.5 }}
+            transition={{ duration: 0.6, delay: 0.8 }}
           >
             <Card className="shadow-lg hover:shadow-xl transition-all duration-200 rounded-2xl">
               <CardHeader>
@@ -208,6 +271,16 @@ const Analytics = () => {
       <StockoutDrawer
         open={isStockoutOpen}
         onClose={() => setIsStockoutOpen(false)}
+      />
+
+      <ExpiringProductsDrawer
+        open={isExpiringProductsOpen}
+        onClose={() => setIsExpiringProductsOpen(false)}
+      />
+
+      <RatingsModal
+        open={isRatingsModalOpen}
+        onClose={() => setIsRatingsModalOpen(false)}
       />
 
       <CategoryProductsModal
