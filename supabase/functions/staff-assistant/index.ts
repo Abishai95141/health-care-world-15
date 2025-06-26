@@ -42,7 +42,7 @@ serve(async (req) => {
 
     console.log('Staff assistant request:', { message, sessionId, staffUserId });
 
-    // Get comprehensive data context without time restrictions
+    // Get comprehensive data context
     const dataContext = await getComprehensiveContext(message);
     
     // Generate enhanced response using Gemini Flash 2.0
@@ -79,31 +79,47 @@ async function getComprehensiveContext(query: string): Promise<string> {
     const contexts: string[] = [];
     const queryLower = query.toLowerCase();
     
-    // Determine time range based on query or use all-time by default
-    let timeFilter = '';
+    // Determine exact time range based on query
+    let timeCondition = '';
     let dateRange = 'all time';
+    const now = new Date();
     
     if (queryLower.includes('today')) {
-      timeFilter = `AND DATE(created_at) = CURRENT_DATE`;
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      timeCondition = `AND created_at >= '${todayStart.toISOString()}'`;
       dateRange = 'today';
     } else if (queryLower.includes('yesterday')) {
-      timeFilter = `AND DATE(created_at) = CURRENT_DATE - INTERVAL '1 day'`;
+      const yesterdayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+      const yesterdayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      timeCondition = `AND created_at >= '${yesterdayStart.toISOString()}' AND created_at < '${yesterdayEnd.toISOString()}'`;
       dateRange = 'yesterday';
     } else if (queryLower.includes('this week')) {
-      timeFilter = `AND created_at >= DATE_TRUNC('week', CURRENT_DATE)`;
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - now.getDay()); // Start of this week (Sunday)
+      weekStart.setHours(0, 0, 0, 0);
+      timeCondition = `AND created_at >= '${weekStart.toISOString()}'`;
       dateRange = 'this week';
     } else if (queryLower.includes('last week')) {
-      timeFilter = `AND created_at >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '1 week' AND created_at < DATE_TRUNC('week', CURRENT_DATE)`;
+      const lastWeekStart = new Date(now);
+      lastWeekStart.setDate(now.getDate() - now.getDay() - 7); // Start of last week
+      lastWeekStart.setHours(0, 0, 0, 0);
+      const lastWeekEnd = new Date(now);
+      lastWeekEnd.setDate(now.getDate() - now.getDay()); // End of last week
+      lastWeekEnd.setHours(0, 0, 0, 0);
+      timeCondition = `AND created_at >= '${lastWeekStart.toISOString()}' AND created_at < '${lastWeekEnd.toISOString()}'`;
       dateRange = 'last week';
     } else if (queryLower.includes('this month')) {
-      timeFilter = `AND created_at >= DATE_TRUNC('month', CURRENT_DATE)`;
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      timeCondition = `AND created_at >= '${monthStart.toISOString()}'`;
       dateRange = 'this month';
     } else if (queryLower.includes('last month')) {
-      timeFilter = `AND created_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '1 month' AND created_at < DATE_TRUNC('month', CURRENT_DATE)`;
+      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 1);
+      timeCondition = `AND created_at >= '${lastMonthStart.toISOString()}' AND created_at < '${lastMonthEnd.toISOString()}'`;
       dateRange = 'last month';
     }
     
-    // Always get sales summary for context (with dynamic time range)
+    // Get orders data with proper time filtering
     const { data: orders } = await supabase
       .from('orders')
       .select(`
@@ -115,23 +131,25 @@ async function getComprehensiveContext(query: string): Promise<string> {
       `)
       .eq('status', 'confirmed')
       .order('created_at', { ascending: false })
-      .limit(100); // Increased limit for better analysis
+      .limit(1000); // Get more data for proper analysis
 
     if (orders && orders.length > 0) {
-      // Filter orders based on time range if specified
+      // Filter orders in memory for exact date ranges if needed
       let filteredOrders = orders;
-      if (timeFilter) {
-        const now = new Date();
+      
+      if (timeCondition) {
+        const startDate = timeCondition.includes('>=') ? 
+          new Date(timeCondition.split("'")[1]) : null;
+        const endDate = timeCondition.includes('< ') ? 
+          new Date(timeCondition.split("'")[3]) : null;
+          
         filteredOrders = orders.filter(order => {
           const orderDate = new Date(order.created_at);
-          // Apply time filtering logic based on the query
-          if (queryLower.includes('today')) {
-            return orderDate.toDateString() === now.toDateString();
-          } else if (queryLower.includes('this week')) {
-            const weekStart = new Date(now.setDate(now.getDate() - now.getDay()));
-            return orderDate >= weekStart;
+          if (startDate && endDate) {
+            return orderDate >= startDate && orderDate < endDate;
+          } else if (startDate) {
+            return orderDate >= startDate;
           }
-          // Add more time filtering as needed
           return true;
         });
       }
@@ -147,15 +165,48 @@ async function getComprehensiveContext(query: string): Promise<string> {
         new Date(Math.max(...filteredOrders.map(o => new Date(o.created_at).getTime()))).toLocaleDateString() : 
         'N/A';
       
-      contexts.push(`Sales Summary (${dateRange === 'all time' ? `${startDate} to ${endDate}` : dateRange}):
+      contexts.push(`Sales Summary (${dateRange}):
         - Total Revenue: ₹${totalRevenue.toFixed(2)}
         - Total Orders: ${totalOrders}
         - Average Order Value: ₹${avgOrderValue.toFixed(2)}
-        - Date Range: ${dateRange === 'all time' ? `${startDate} to ${endDate} (default: all time)` : dateRange}
-        - Sample Recent Orders: ${JSON.stringify(filteredOrders.slice(0, 3))}`);
+        - Date Range: ${dateRange === 'all time' ? `${startDate} to ${endDate}` : dateRange}
+        - Orders Detail: ${JSON.stringify(filteredOrders.slice(0, 10))}`);
+        
+      // For comparison queries, get both periods
+      if (queryLower.includes('compare') && (queryLower.includes('week') || queryLower.includes('month'))) {
+        const thisWeekStart = new Date(now);
+        thisWeekStart.setDate(now.getDate() - now.getDay());
+        thisWeekStart.setHours(0, 0, 0, 0);
+        
+        const lastWeekStart = new Date(now);
+        lastWeekStart.setDate(now.getDate() - now.getDay() - 7);
+        lastWeekStart.setHours(0, 0, 0, 0);
+        
+        const lastWeekEnd = new Date(now);
+        lastWeekEnd.setDate(now.getDate() - now.getDay());
+        lastWeekEnd.setHours(0, 0, 0, 0);
+        
+        const thisWeekOrders = orders.filter(order => {
+          const orderDate = new Date(order.created_at);
+          return orderDate >= thisWeekStart;
+        });
+        
+        const lastWeekOrders = orders.filter(order => {
+          const orderDate = new Date(order.created_at);
+          return orderDate >= lastWeekStart && orderDate < lastWeekEnd;
+        });
+        
+        const thisWeekRevenue = thisWeekOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
+        const lastWeekRevenue = lastWeekOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
+        
+        contexts.push(`Weekly Comparison Data:
+          - This Week: ${thisWeekOrders.length} orders, ₹${thisWeekRevenue.toFixed(2)} revenue
+          - Last Week: ${lastWeekOrders.length} orders, ₹${lastWeekRevenue.toFixed(2)} revenue
+          - Growth: ${thisWeekRevenue > 0 && lastWeekRevenue > 0 ? ((thisWeekRevenue - lastWeekRevenue) / lastWeekRevenue * 100).toFixed(1) : 0}%`);
+      }
     }
 
-    // Get product performance data (no time restriction unless specifically requested)
+    // Get product performance data when relevant
     if (queryLower.includes('product') || queryLower.includes('inventory') || queryLower.includes('stock') || queryLower.includes('top') || queryLower.includes('best')) {
       const { data: products } = await supabase
         .from('products')
@@ -165,7 +216,7 @@ async function getComprehensiveContext(query: string): Promise<string> {
         `)
         .eq('is_active', true)
         .order('created_at', { ascending: false })
-        .limit(50); // Increased for better analysis
+        .limit(50);
       
       if (products) {
         const productsWithStats = products.map(product => {
@@ -182,11 +233,11 @@ async function getComprehensiveContext(query: string): Promise<string> {
           };
         });
         
-        contexts.push(`Product Performance Data (All Time): ${JSON.stringify(productsWithStats)}`);
+        contexts.push(`Product Performance Data: ${JSON.stringify(productsWithStats)}`);
       }
     }
 
-    // Get customer analytics (all time by default)
+    // Get customer analytics when relevant
     if (queryLower.includes('customer') || queryLower.includes('user') || queryLower.includes('profile')) {
       const { data: customerStats } = await supabase
         .rpc('get_customer_stats');
@@ -195,16 +246,16 @@ async function getComprehensiveContext(query: string): Promise<string> {
         .from('profiles')
         .select('id, full_name, email, created_at')
         .order('created_at', { ascending: false })
-        .limit(20); // Increased for better analysis
+        .limit(20);
       
-      if (customerStats && allProfiles) {
-        contexts.push(`Customer Analytics (All Time):
+      if (customerStats || allProfiles) {
+        contexts.push(`Customer Analytics:
           - Stats: ${JSON.stringify(customerStats)}
           - Recent Customers: ${JSON.stringify(allProfiles)}`);
       }
     }
 
-    // Get category and brand performance (all time)
+    // Get category and brand performance
     if (queryLower.includes('category') || queryLower.includes('brand') || queryLower.includes('performance')) {
       const { data: topCategories } = await supabase
         .rpc('get_top_categories', { limit_count: 15 });
@@ -213,7 +264,7 @@ async function getComprehensiveContext(query: string): Promise<string> {
         .rpc('get_top_brands', { limit_count: 15 });
       
       if (topCategories || topBrands) {
-        contexts.push(`Performance Data (All Time):
+        contexts.push(`Performance Data:
           - Top Categories: ${JSON.stringify(topCategories || [])}
           - Top Brands: ${JSON.stringify(topBrands || [])}`);
       }
@@ -229,7 +280,7 @@ async function getComprehensiveContext(query: string): Promise<string> {
         .order('stock', { ascending: true });
       
       if (lowStockProducts) {
-        contexts.push(`Low Stock Alerts (Current): ${JSON.stringify(lowStockProducts)}`);
+        contexts.push(`Low Stock Alerts: ${JSON.stringify(lowStockProducts)}`);
       }
     }
 
@@ -249,7 +300,7 @@ CORE PRINCIPLES:
 3. Return structured JSON responses with appropriate visualizations
 4. Suggest relevant follow-up actions after each response
 5. Ask clarifying questions when queries are ambiguous
-6. When summarizing data, always mention the date range: "Here are the figures from [start_date] to [end_date] (default: all time)" unless a specific time period was requested
+6. When summarizing data, always mention the actual date range from the data, not assumptions
 
 RESPONSE FORMAT:
 Always return valid JSON with these fields:
@@ -262,10 +313,11 @@ Always return valid JSON with these fields:
 DATA ANALYSIS RULES:
 - For sales queries: compute revenue, order count, AOV, growth rates
 - For product queries: include stock levels, ratings, performance metrics
-- For time-based queries: use the full dataset unless specific time range requested
+- For time-based queries: use the EXACT data provided in context
 - Always highlight trends, anomalies, and key insights
 - Include actual numbers and percentages in narratives
-- DEFAULT to all-time data unless user specifies a time period
+- NEVER assume date ranges - use the actual data provided
+- For comparison queries, provide specific metrics for both periods
 
 CHART SPECIFICATIONS:
 - Use Recharts format for chartSpec
@@ -275,7 +327,7 @@ CHART SPECIFICATIONS:
 - Example chartSpec format:
   {
     "type": "bar",
-    "data": [{"name": "Product A", "value": 1200}, {"name": "Product B", "value": 800}],
+    "data": [{"name": "This Week", "value": 1200}, {"name": "Last Week", "value": 800}],
     "xKey": "name",
     "yKey": "value"
   }
@@ -289,7 +341,7 @@ Current data context: ${context}
 
 Previous conversation context: ${JSON.stringify(previousContext || {})}
 
-IMPORTANT: When providing summaries, always state the date range clearly. If no specific time period was requested, mention "default: all time" in your response.
+IMPORTANT: Always provide actual figures from the data. If data shows zero values, report them accurately and suggest reasons or alternative queries.
 
 Respond only with valid JSON in the exact format specified.`;
 
@@ -350,13 +402,14 @@ Respond only with valid JSON in the exact format specified.`;
     console.error('Gemini API error:', error);
     return {
       type: 'text',
-      content: 'I can help you analyze business data, sales performance, inventory levels, and customer insights across your entire dataset. What specific metrics would you like to explore?',
+      content: 'I can help you analyze business data, sales performance, inventory levels, and customer insights. What specific metrics would you like to explore?',
       actions: [
-        { label: "All-Time Sales Summary", query: "Show me comprehensive sales summary" },
+        { label: "Sales Summary", query: "Show me comprehensive sales summary" },
         { label: "Current Stock Status", query: "What's our current inventory status?" },
-        { label: "Product Performance Analysis", query: "Show all-time top performing products" }
+        { label: "Product Performance", query: "Show top performing products" },
+        { label: "Weekly Comparison", query: "Compare this week vs last week sales performance" }
       ],
-      insights: ["Ready to analyze your complete business data"]
+      insights: ["Ready to analyze your business data"]
     };
   }
 }

@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, ArrowLeft, MessageCircle, Loader2, User, Bot, TrendingUp, BarChart3, PieChart, Activity } from 'lucide-react';
@@ -13,7 +14,8 @@ import {
   Line, 
   BarChart, 
   Bar, 
-  PieChart as RechartsPieChart, 
+  PieChart as RechartsPieChart,
+  Pie,
   Cell, 
   XAxis, 
   YAxis, 
@@ -77,7 +79,8 @@ const DataAssistant = () => {
         { label: "📊 Today's Sales Summary", query: "Show me today's sales summary with trends" },
         { label: "⚠️ Low Stock Alerts", query: "What products are running low on stock?" },
         { label: "🏆 Top Performing Products", query: "Show me top performing products by revenue" },
-        { label: "👥 Customer Insights", query: "Give me customer analytics and insights" }
+        { label: "👥 Customer Insights", query: "Give me customer analytics and insights" },
+        { label: "📈 This Week vs Last Week", query: "Compare this week vs last week sales performance" }
       ]
     }]);
   }, []);
@@ -218,11 +221,10 @@ const DataAssistant = () => {
         return (
           <ResponsiveContainer width="100%" height={300}>
             <RechartsPieChart>
-              <RechartsPieChart 
+              <Pie 
                 data={data}
                 cx="50%"
                 cy="50%"
-                labelLine={false}
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey={yKey}
@@ -231,7 +233,7 @@ const DataAssistant = () => {
                 {data.map((entry: any, index: number) => (
                   <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
                 ))}
-              </RechartsPieChart>
+              </Pie>
               <Tooltip content={<CustomTooltip />} />
             </RechartsPieChart>
           </ResponsiveContainer>
