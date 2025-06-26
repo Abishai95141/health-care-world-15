@@ -8,12 +8,14 @@ export const CartConversionFunnel = () => {
   const { data: funnelData, isLoading } = useQuery({
     queryKey: ['cart-conversion-funnel'],
     queryFn: async () => {
+      // Get unique users at each stage
       const [cartRes, checkoutRes, paymentRes] = await Promise.all([
-        supabase.from('cart_items').select('user_id').group('user_id'),
+        supabase.from('cart_items').select('user_id'),
         supabase.from('orders').select('user_id').eq('status', 'pending'),
         supabase.from('orders').select('user_id').eq('payment_status', 'paid')
       ]);
 
+      // Create sets to count unique users
       const cartUsers = new Set(cartRes.data?.map(item => item.user_id) || []);
       const checkoutUsers = new Set(checkoutRes.data?.map(item => item.user_id) || []);
       const paymentUsers = new Set(paymentRes.data?.map(item => item.user_id) || []);

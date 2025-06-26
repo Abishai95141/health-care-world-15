@@ -15,15 +15,31 @@ export const SalesTrendChart = ({ onDataPointClick }: SalesTrendChartProps) => {
   const { data: salesData, isLoading } = useQuery({
     queryKey: ['sales-trend', period],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_daily_sales');
+      const { data, error } = await supabase
+        .from('orders')
+        .select('total_amount, created_at')
+        .eq('status', 'confirmed')
+        .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
+
       if (error) throw error;
-      
-      return data?.map(item => ({
-        date: new Date(item.sale_date).toLocaleDateString(),
-        revenue: item.total_revenue || 0,
-        orders: item.total_orders || 0,
-        avgOrderValue: item.avg_order_value || 0
-      })).slice(-30) || []; // Last 30 days
+
+      // Group by date
+      const salesByDate = data.reduce((acc: any, order) => {
+        const date = new Date(order.created_at).toISOString().split('T')[0];
+        if (!acc[date]) {
+          acc[date] = { total_revenue: 0, total_orders: 0 };
+        }
+        acc[date].total_revenue += order.total_amount || 0;
+        acc[date].total_orders += 1;
+        return acc;
+      }, {});
+
+      return Object.entries(salesByDate).map(([date, data]: [string, any]) => ({
+        date: new Date(date).toLocaleDateString(),
+        revenue: data.total_revenue,
+        orders: data.total_orders,
+        avgOrderValue: data.total_orders > 0 ? data.total_revenue / data.total_orders : 0
+      })).slice(-30); // Last 30 days
     }
   });
 
