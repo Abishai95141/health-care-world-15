@@ -21,11 +21,19 @@ import { CategoryPerformanceChart } from '@/components/staff/analytics/CategoryP
 import { CartConversionFunnel } from '@/components/staff/analytics/CartConversionFunnel';
 import { TopProductsSection } from '@/components/staff/analytics/TopProductsSection';
 import { ReturningCustomersDrawer } from '@/components/staff/analytics/ReturningCustomersDrawer';
+import { NewCustomersDrawer } from '@/components/staff/analytics/NewCustomersDrawer';
+import { AllCustomersDrawer } from '@/components/staff/analytics/AllCustomersDrawer';
 import { CategoryProductsModal } from '@/components/staff/analytics/CategoryProductsModal';
 import { SalesDetailPanel } from '@/components/staff/analytics/SalesDetailPanel';
+import { AOVGauge } from '@/components/staff/analytics/AOVGauge';
+import { InventoryTurnoverChart } from '@/components/staff/analytics/InventoryTurnoverChart';
+import { StockoutDrawer } from '@/components/staff/analytics/StockoutDrawer';
 
 const Analytics = () => {
   const [isReturningCustomersOpen, setIsReturningCustomersOpen] = useState(false);
+  const [isNewCustomersOpen, setIsNewCustomersOpen] = useState(false);
+  const [isAllCustomersOpen, setIsAllCustomersOpen] = useState(false);
+  const [isStockoutOpen, setIsStockoutOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
@@ -44,7 +52,12 @@ const Analytics = () => {
           </motion.div>
 
           {/* KPI Cards */}
-          <KPICards onReturningCustomersClick={() => setIsReturningCustomersOpen(true)} />
+          <KPICards 
+            onReturningCustomersClick={() => setIsReturningCustomersOpen(true)}
+            onNewCustomersClick={() => setIsNewCustomersOpen(true)}
+            onAllCustomersClick={() => setIsAllCustomersOpen(true)}
+            onStockoutClick={() => setIsStockoutOpen(true)}
+          />
 
           {/* Charts Section */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -64,6 +77,25 @@ const Analytics = () => {
                 </CardHeader>
                 <CardContent>
                   <SalesTrendChart onDataPointClick={setSelectedDate} />
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* AOV Gauge */}
+            <motion.div
+              initial={{ opacity: 0, x: -50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.25 }}
+            >
+              <Card className="shadow-lg hover:shadow-xl transition-all duration-200 rounded-2xl">
+                <CardHeader>
+                  <CardTitle className="text-xl font-semibold text-gray-900 flex items-center gap-3">
+                    <Calculator className="h-6 w-6 text-[#10B981]" />
+                    Average Order Value
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <AOVGauge />
                 </CardContent>
               </Card>
             </motion.div>
@@ -105,6 +137,25 @@ const Analytics = () => {
                 </CardContent>
               </Card>
             </motion.div>
+
+            {/* Inventory Turnover Chart */}
+            <motion.div
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.45 }}
+            >
+              <Card className="shadow-lg hover:shadow-xl transition-all duration-200 rounded-2xl">
+                <CardHeader>
+                  <CardTitle className="text-xl font-semibold text-gray-900 flex items-center gap-3">
+                    <Package className="h-6 w-6 text-[#10B981]" />
+                    Inventory Turnover
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <InventoryTurnoverChart />
+                </CardContent>
+              </Card>
+            </motion.div>
           </div>
 
           {/* Sales Detail Panel */}
@@ -142,6 +193,21 @@ const Analytics = () => {
       <ReturningCustomersDrawer 
         open={isReturningCustomersOpen}
         onClose={() => setIsReturningCustomersOpen(false)}
+      />
+
+      <NewCustomersDrawer
+        open={isNewCustomersOpen}
+        onClose={() => setIsNewCustomersOpen(false)}
+      />
+
+      <AllCustomersDrawer
+        open={isAllCustomersOpen}
+        onClose={() => setIsAllCustomersOpen(false)}
+      />
+
+      <StockoutDrawer
+        open={isStockoutOpen}
+        onClose={() => setIsStockoutOpen(false)}
       />
 
       <CategoryProductsModal

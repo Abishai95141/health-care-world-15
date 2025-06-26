@@ -2,23 +2,32 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
-import { DollarSign, ShoppingCart, Calculator, Users, UserPlus, UserCheck } from 'lucide-react';
+import { DollarSign, ShoppingCart, Calculator, Users, UserPlus, UserCheck, AlertTriangle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 interface KPICardsProps {
   onReturningCustomersClick: () => void;
+  onNewCustomersClick: () => void;
+  onAllCustomersClick: () => void;
+  onStockoutClick: () => void;
 }
 
-export const KPICards = ({ onReturningCustomersClick }: KPICardsProps) => {
+export const KPICards = ({ 
+  onReturningCustomersClick, 
+  onNewCustomersClick, 
+  onAllCustomersClick,
+  onStockoutClick 
+}: KPICardsProps) => {
   // Fetch KPI data
   const { data: kpiData, isLoading } = useQuery({
     queryKey: ['analytics-kpis'],
     queryFn: async () => {
-      const [revenueRes, ordersRes, customersRes] = await Promise.all([
+      const [revenueRes, ordersRes, customersRes, lowStockRes] = await Promise.all([
         supabase.from('orders').select('total_amount').eq('status', 'confirmed'),
         supabase.from('orders').select('id, created_at').eq('status', 'confirmed'),
-        supabase.rpc('get_customer_stats')
+        supabase.rpc('get_customer_stats'),
+        supabase.from('products').select('id').lte('stock', 10).eq('is_active', true)
       ]);
 
       const totalRevenue = revenueRes.data?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0;
@@ -31,13 +40,16 @@ export const KPICards = ({ onReturningCustomersClick }: KPICardsProps) => {
         returning_customers: 0
       };
 
+      const lowStockCount = lowStockRes.data?.length || 0;
+
       return {
         totalRevenue,
         totalOrders,
         avgOrderValue,
         totalCustomers: customerStats.total_customers || 0,
         newCustomers: customerStats.new_customers_this_month || 0,
-        returningCustomers: customerStats.returning_customers || 0
+        returningCustomers: customerStats.returning_customers || 0,
+        lowStockCount
       };
     }
   });
@@ -73,7 +85,7 @@ export const KPICards = ({ onReturningCustomersClick }: KPICardsProps) => {
       icon: Users,
       color: 'text-orange-600',
       bgColor: 'bg-orange-50',
-      onClick: null
+      onClick: onAllCustomersClick
     },
     {
       title: 'New Customers',
@@ -81,7 +93,7 @@ export const KPICards = ({ onReturningCustomersClick }: KPICardsProps) => {
       icon: UserPlus,
       color: 'text-indigo-600',
       bgColor: 'bg-indigo-50',
-      onClick: null
+      onClick: onNewCustomersClick
     },
     {
       title: 'Returning Customers',
@@ -90,11 +102,19 @@ export const KPICards = ({ onReturningCustomersClick }: KPICardsProps) => {
       color: 'text-[#10B981]',
       bgColor: 'bg-green-50',
       onClick: onReturningCustomersClick
+    },
+    {
+      title: 'Low Stock Items',
+      value: (kpiData?.lowStockCount || 0).toLocaleString(),
+      icon: AlertTriangle,
+      color: 'text-red-600',
+      bgColor: 'bg-red-50',
+      onClick: onStockoutClick
     }
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       {kpiCards.map((card, index) => (
         <motion.div
           key={card.title}
