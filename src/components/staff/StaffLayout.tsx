@@ -17,7 +17,8 @@ import {
   FileText,
   Truck,
   Megaphone,
-  BarChart3
+  BarChart3,
+  MessageCircle
 } from 'lucide-react';
 
 interface StaffLayoutProps {
@@ -38,6 +39,7 @@ const StaffLayout = ({ children }: StaffLayoutProps) => {
   const navigation = [
     { name: 'Dashboard', href: '/staff/dashboard', icon: LayoutDashboard },
     { name: 'Analytics', href: '/staff/analytics', icon: BarChart3 },
+    { name: 'Data Assistant', href: '/staff/assistant', icon: MessageCircle },
     { name: 'Add New Product', href: '/staff/products/new', icon: Plus },
     { name: 'Bulk Import (CSV)', href: '/staff/products/import', icon: Upload },
     { name: 'Manage Products', href: '/staff/products', icon: Package },

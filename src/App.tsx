@@ -25,6 +25,7 @@ import StaffLayout from '@/components/staff/StaffLayout';
 import StaffLogin from '@/pages/staff/StaffLogin';
 import StaffDashboard from '@/pages/staff/StaffDashboard';
 import Analytics from '@/pages/staff/Analytics';
+import DataAssistantPage from '@/pages/staff/DataAssistant';
 import AddProduct from '@/pages/staff/AddProduct';
 import EditProduct from '@/pages/staff/EditProduct';
 import ManageProducts from '@/pages/staff/ManageProducts';
@@ -121,6 +122,14 @@ function App() {
                   element={
                     <StaffProtectedRoute>
                       <StaffLayout><Analytics /></StaffLayout>
+                    </StaffProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/staff/assistant" 
+                  element={
+                    <StaffProtectedRoute>
+                      <StaffLayout><DataAssistantPage /></StaffLayout>
                     </StaffProtectedRoute>
                   } 
                 />
