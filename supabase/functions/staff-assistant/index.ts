@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
@@ -324,12 +323,17 @@ CHART SPECIFICATIONS:
 - Supported chart types: line, bar, pie, area, radialbar, gauge, funnel, scatter, composed
 - Include proper data arrays and configuration
 - Make charts meaningful and insightful
-- Example chartSpec format:
+- For weekly comparisons, use bar charts with multiple series
+- Example chartSpec format for weekly comparison:
   {
     "type": "bar",
-    "data": [{"name": "This Week", "value": 1200}, {"name": "Last Week", "value": 800}],
-    "xKey": "name",
-    "yKey": "value"
+    "data": [
+      {"period": "This Week", "revenue": 12000, "orders": 45},
+      {"period": "Last Week", "revenue": 8000, "orders": 32}
+    ],
+    "xKey": "period",
+    "yKey": "revenue",
+    "yKey2": "orders"
   }
 
 FOLLOW-UP ACTIONS:
@@ -341,7 +345,7 @@ Current data context: ${context}
 
 Previous conversation context: ${JSON.stringify(previousContext || {})}
 
-IMPORTANT: Always provide actual figures from the data. If data shows zero values, report them accurately and suggest reasons or alternative queries.
+IMPORTANT: Always provide actual figures from the data. If data shows zero values, report them accurately and suggest reasons or alternative queries. For weekly comparisons, always create charts that show both periods clearly with different colors.
 
 Respond only with valid JSON in the exact format specified.`;
 

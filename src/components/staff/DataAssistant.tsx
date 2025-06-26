@@ -165,7 +165,7 @@ const DataAssistant = () => {
     }
 
     const colors = ['#27AE60', '#3498DB', '#E74C3C', '#F39C12', '#9B59B6', '#1ABC9C', '#34495E', '#E67E22'];
-    const { data, type, xKey = 'name', yKey = 'value' } = chartSpec;
+    const { data, type, xKey = 'name', yKey = 'value', yKey2 } = chartSpec;
 
     const CustomTooltip = ({ active, payload, label }: any) => {
       if (active && payload && payload.length) {
@@ -174,7 +174,11 @@ const DataAssistant = () => {
             <p className="font-medium text-gray-900 mb-1">{label}</p>
             {payload.map((entry: any, index: number) => (
               <p key={index} style={{ color: entry.color }} className="text-sm">
-                {entry.name}: {typeof entry.value === 'number' ? entry.value.toLocaleString() : entry.value}
+                {entry.name}: {typeof entry.value === 'number' ? 
+                  (entry.name.toLowerCase().includes('revenue') ? 
+                    `₹${entry.value.toLocaleString()}` : 
+                    entry.value.toLocaleString()
+                  ) : entry.value}
               </p>
             ))}
           </div>
@@ -200,6 +204,16 @@ const DataAssistant = () => {
                 dot={{ fill: '#27AE60', strokeWidth: 2, r: 4 }}
                 activeDot={{ r: 6, stroke: '#27AE60', strokeWidth: 2 }}
               />
+              {yKey2 && (
+                <Line 
+                  type="monotone" 
+                  dataKey={yKey2} 
+                  stroke="#3498DB" 
+                  strokeWidth={2}
+                  dot={{ fill: '#3498DB', strokeWidth: 2, r: 4 }}
+                  activeDot={{ r: 6, stroke: '#3498DB', strokeWidth: 2 }}
+                />
+              )}
             </LineChart>
           </ResponsiveContainer>
         );
@@ -213,6 +227,9 @@ const DataAssistant = () => {
               <YAxis stroke="#6b7280" fontSize={12} />
               <Tooltip content={<CustomTooltip />} />
               <Bar dataKey={yKey} fill="#27AE60" radius={[4, 4, 0, 0]} />
+              {yKey2 && (
+                <Bar dataKey={yKey2} fill="#3498DB" radius={[4, 4, 0, 0]} />
+              )}
             </BarChart>
           </ResponsiveContainer>
         );
@@ -255,6 +272,16 @@ const DataAssistant = () => {
                 fillOpacity={0.3}
                 strokeWidth={2}
               />
+              {yKey2 && (
+                <Area 
+                  type="monotone" 
+                  dataKey={yKey2} 
+                  stroke="#3498DB" 
+                  fill="#3498DB" 
+                  fillOpacity={0.3}
+                  strokeWidth={2}
+                />
+              )}
             </AreaChart>
           </ResponsiveContainer>
         );
@@ -306,7 +333,7 @@ const DataAssistant = () => {
               <YAxis stroke="#6b7280" fontSize={12} />
               <Tooltip content={<CustomTooltip />} />
               <Bar dataKey={yKey} fill="#27AE60" />
-              <Line type="monotone" dataKey={yKey} stroke="#3498DB" strokeWidth={2} />
+              <Line type="monotone" dataKey={yKey2 || yKey} stroke="#3498DB" strokeWidth={2} />
             </ComposedChart>
           </ResponsiveContainer>
         );
@@ -320,6 +347,9 @@ const DataAssistant = () => {
               <YAxis stroke="#6b7280" fontSize={12} />
               <Tooltip content={<CustomTooltip />} />
               <Bar dataKey={yKey} fill="#27AE60" radius={[4, 4, 0, 0]} />
+              {yKey2 && (
+                <Bar dataKey={yKey2} fill="#3498DB" radius={[4, 4, 0, 0]} />
+              )}
             </BarChart>
           </ResponsiveContainer>
         );

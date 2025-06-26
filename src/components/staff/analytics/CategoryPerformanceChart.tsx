@@ -9,7 +9,18 @@ interface CategoryPerformanceChartProps {
   onCategoryClick: (category: string) => void;
 }
 
-const COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'];
+const COLORS = [
+  '#10B981', // Green for OTC & Wellness
+  '#3B82F6', // Blue for Prescription
+  '#F59E0B', // Orange for Vitamins & Supplements
+  '#EF4444', // Red for Medical Devices
+  '#8B5CF6', // Purple for Personal Care
+  '#06B6D4', // Cyan for Baby Care
+  '#EC4899', // Pink for Beauty & Cosmetics
+  '#84CC16', // Lime for Health Foods
+  '#F97316', // Orange for Fitness & Sports
+  '#6366F1'  // Indigo for Others
+];
 
 export const CategoryPerformanceChart = ({ onCategoryClick }: CategoryPerformanceChartProps) => {
   const { data: categoryData, isLoading } = useQuery({
@@ -46,6 +57,7 @@ export const CategoryPerformanceChart = ({ onCategoryClick }: CategoryPerformanc
       {...props}
       className="cursor-pointer hover:opacity-80 transition-opacity duration-200"
       onClick={() => onCategoryClick(payload.name)}
+      fill={payload.color}
     />
   );
 
@@ -77,7 +89,6 @@ export const CategoryPerformanceChart = ({ onCategoryClick }: CategoryPerformanc
             {categoryData?.map((entry, index) => (
               <CustomCell 
                 key={`cell-${index}`} 
-                fill={entry.color}
                 payload={entry}
               />
             ))}
