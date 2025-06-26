@@ -8,7 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ProductDetailDrawer } from './ProductDetailDrawer';
 
 export const TopRatedProducts = () => {
-  const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<{id: string, name: string} | null>(null);
 
   const { data: topRated, isLoading: topLoading } = useQuery({
     queryKey: ['top-rated-products'],
@@ -45,7 +45,7 @@ export const TopRatedProducts = () => {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.3, delay: index * 0.1 }}
               className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200 cursor-pointer"
-              onClick={() => setSelectedProduct(product.product_id)}
+              onClick={() => setSelectedProduct({id: product.product_id, name: product.product_name})}
             >
               <div className="flex items-center justify-between">
                 <div className="flex-1">
@@ -134,7 +134,8 @@ export const TopRatedProducts = () => {
       </div>
 
       <ProductDetailDrawer
-        productId={selectedProduct}
+        productId={selectedProduct?.id || null}
+        productName={selectedProduct?.name || ''}
         onClose={() => setSelectedProduct(null)}
       />
     </>
