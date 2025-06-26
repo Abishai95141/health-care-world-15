@@ -18,16 +18,18 @@ interface ChatMessage {
   message: string;
   sessionId: string;
   staffUserId: string;
+  context?: any;
 }
 
 interface GeminiResponse {
   type: 'text' | 'table' | 'chart' | 'action';
   content: string;
   chartSpec?: any;
-  action?: {
-    name: string;
-    payload: any;
-  };
+  actions?: Array<{
+    label: string;
+    query: string;
+  }>;
+  insights?: string[];
 }
 
 serve(async (req) => {
@@ -36,15 +38,15 @@ serve(async (req) => {
   }
 
   try {
-    const { message, sessionId, staffUserId }: ChatMessage = await req.json();
+    const { message, sessionId, staffUserId, context }: ChatMessage = await req.json();
 
     console.log('Staff assistant request:', { message, sessionId, staffUserId });
 
-    // Get relevant context using RAG
-    const context = await getRelevantContext(message);
+    // Get comprehensive data context
+    const dataContext = await getComprehensiveContext(message);
     
-    // Generate response using Gemini Flash 2.0
-    const response = await generateGeminiResponse(message, context);
+    // Generate enhanced response using Gemini Flash 2.0
+    const response = await generateEnhancedGeminiResponse(message, dataContext, context);
     
     // Store conversation in session
     await storeConversation(sessionId, staffUserId, message, response);
@@ -72,73 +74,164 @@ serve(async (req) => {
   }
 });
 
-async function getRelevantContext(query: string): Promise<string> {
+async function getComprehensiveContext(query: string): Promise<string> {
   try {
-    // Generate embedding for the query (simplified - in production you'd use actual embeddings)
-    // For now, we'll do text-based matching on key business data
-    
     const contexts: string[] = [];
+    const queryLower = query.toLowerCase();
     
-    // Get product data if query relates to products/inventory
-    if (query.toLowerCase().includes('product') || query.toLowerCase().includes('inventory') || query.toLowerCase().includes('stock')) {
+    // Always get recent sales summary for context
+    const { data: recentOrders } = await supabase
+      .from('orders')
+      .select(`
+        id, total_amount, shipping_amount, status, payment_status, created_at,
+        order_items (
+          quantity, unit_price, total_price,
+          products (name, category, brand, price, stock)
+        )
+      `)
+      .eq('status', 'confirmed')
+      .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (recentOrders) {
+      const totalRevenue = recentOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
+      const totalOrders = recentOrders.length;
+      const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+      
+      contexts.push(`Recent 7 Days Sales Summary:
+        - Total Revenue: ₹${totalRevenue.toFixed(2)}
+        - Total Orders: ${totalOrders}
+        - Average Order Value: ₹${avgOrderValue.toFixed(2)}
+        - Sample Recent Orders: ${JSON.stringify(recentOrders.slice(0, 3))}`);
+    }
+
+    // Get product performance data
+    if (queryLower.includes('product') || queryLower.includes('inventory') || queryLower.includes('stock') || queryLower.includes('top') || queryLower.includes('best')) {
       const { data: products } = await supabase
         .from('products')
-        .select('name, category, brand, stock, price, mrp')
-        .limit(10);
+        .select(`
+          id, name, category, brand, price, mrp, stock, is_active, created_at,
+          product_reviews (rating, comment, created_at)
+        `)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(20);
       
       if (products) {
-        contexts.push(`Recent Products Data: ${JSON.stringify(products.slice(0, 5))}`);
+        const productsWithStats = products.map(product => {
+          const reviews = product.product_reviews || [];
+          const avgRating = reviews.length > 0 
+            ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length 
+            : 0;
+          
+          return {
+            ...product,
+            avgRating: avgRating.toFixed(1),
+            reviewCount: reviews.length,
+            stockStatus: product.stock <= 10 ? 'LOW' : product.stock <= 50 ? 'MEDIUM' : 'HIGH'
+          };
+        });
+        
+        contexts.push(`Product Performance Data: ${JSON.stringify(productsWithStats)}`);
       }
     }
-    
-    // Get sales/order data if query relates to revenue/sales
-    if (query.toLowerCase().includes('sale') || query.toLowerCase().includes('revenue') || query.toLowerCase().includes('order')) {
-      const { data: orders } = await supabase
-        .from('orders')
-        .select('total_amount, status, created_at')
+
+    // Get customer analytics
+    if (queryLower.includes('customer') || queryLower.includes('user') || queryLower.includes('profile')) {
+      const { data: customerStats } = await supabase
+        .rpc('get_customer_stats');
+      
+      const { data: recentProfiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, created_at')
         .order('created_at', { ascending: false })
         .limit(10);
       
-      if (orders) {
-        contexts.push(`Recent Orders Data: ${JSON.stringify(orders.slice(0, 5))}`);
+      if (customerStats && recentProfiles) {
+        contexts.push(`Customer Analytics:
+          - Stats: ${JSON.stringify(customerStats)}
+          - Recent Customers: ${JSON.stringify(recentProfiles)}`);
       }
     }
-    
-    // Get customer data if query relates to customers
-    if (query.toLowerCase().includes('customer') || query.toLowerCase().includes('user')) {
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('full_name, email, created_at')
-        .limit(10);
+
+    // Get category and brand performance
+    if (queryLower.includes('category') || queryLower.includes('brand') || queryLower.includes('performance')) {
+      const { data: topCategories } = await supabase
+        .rpc('get_top_categories', { limit_count: 10 });
       
-      if (profiles) {
-        contexts.push(`Customer Data Sample: ${JSON.stringify(profiles.slice(0, 5))}`);
+      const { data: topBrands } = await supabase
+        .rpc('get_top_brands', { limit_count: 10 });
+      
+      if (topCategories || topBrands) {
+        contexts.push(`Performance Data:
+          - Top Categories: ${JSON.stringify(topCategories || [])}
+          - Top Brands: ${JSON.stringify(topBrands || [])}`);
       }
     }
-    
+
+    // Get low stock alerts
+    if (queryLower.includes('low') || queryLower.includes('stock') || queryLower.includes('alert') || queryLower.includes('inventory')) {
+      const { data: lowStockProducts } = await supabase
+        .from('products')
+        .select('id, name, category, stock, price')
+        .lte('stock', 10)
+        .eq('is_active', true)
+        .order('stock', { ascending: true });
+      
+      if (lowStockProducts) {
+        contexts.push(`Low Stock Alerts: ${JSON.stringify(lowStockProducts)}`);
+      }
+    }
+
     return contexts.join('\n\n');
   } catch (error) {
-    console.error('Error getting context:', error);
-    return '';
+    console.error('Error getting comprehensive context:', error);
+    return 'Unable to fetch complete data context.';
   }
 }
 
-async function generateGeminiResponse(message: string, context: string): Promise<GeminiResponse> {
-  const systemPrompt = `You are the Master Data Assistant for HealthCareWorld's Staff Portal. Follow these rules:
+async function generateEnhancedGeminiResponse(message: string, context: string, previousContext?: any): Promise<GeminiResponse> {
+  const systemPrompt = `You are HealthCareWorld's Master Interactive Data Analyst. Follow these rules:
 
-1. Intent Parsing: Classify requests as informational, actionable, or policy-lookup.
-2. Grounding: Always ground responses in retrieved data snippets; cite sources when possible.
-3. Structured Output: Return JSON with keys:
-   - type: "text"|"table"|"chart"|"action"
-   - content: markdown or structured data
-   - chartSpec: if type=chart, include a simple chart config
-   - action: if type=action, include name and payload
-4. Clarity & Brevity: Keep answers concise; ask clarifying questions if needed.
-5. Security: Respect user permissions; do not expose unauthorized data.
+CORE PRINCIPLES:
+1. Always interpret the user's intent and compute exact metrics from the database
+2. Provide narrative summaries before any data tables or charts
+3. Return structured JSON responses with appropriate visualizations
+4. Suggest relevant follow-up actions after each response
+5. Ask clarifying questions when queries are ambiguous
 
-Available context: ${context}
+RESPONSE FORMAT:
+Always return valid JSON with these fields:
+- type: "text"|"table"|"chart"|"action"
+- content: Narrative summary + data (markdown format for tables)
+- chartSpec: Recharts configuration object (when type="chart")
+- actions: Array of follow-up suggestion buttons
+- insights: Array of key insights or anomalies
 
-Always respond with valid JSON in the exact format specified above.`;
+DATA ANALYSIS RULES:
+- For sales queries: compute revenue, order count, AOV, growth rates
+- For product queries: include stock levels, ratings, performance metrics
+- For time-based queries: assume last 7 days if no range specified, and mention this assumption
+- Always highlight trends, anomalies, and key insights
+- Include actual numbers and percentages in narratives
+
+CHART SPECIFICATIONS:
+- Use Recharts format for chartSpec
+- Common chart types: LineChart, BarChart, PieChart, AreaChart
+- Include proper data arrays and configuration
+- Make charts meaningful and insightful
+
+FOLLOW-UP ACTIONS:
+- Suggest 2-3 relevant next steps as quick-reply buttons
+- Include drill-down options and comparative analysis
+- Offer export or detailed view options when appropriate
+
+Current data context: ${context}
+
+Previous conversation context: ${JSON.stringify(previousContext || {})}
+
+Respond only with valid JSON in the exact format specified.`;
 
   try {
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
@@ -149,12 +242,12 @@ Always respond with valid JSON in the exact format specified above.`;
       body: JSON.stringify({
         contents: [{
           parts: [{
-            text: `${systemPrompt}\n\nUser Query: ${message}\n\nPlease respond with a JSON object containing type, content, and optionally chartSpec or action fields.`
+            text: `${systemPrompt}\n\nUser Query: ${message}\n\nProvide a comprehensive analysis with narrative, data, and actionable insights in JSON format.`
           }]
         }],
         generationConfig: {
           temperature: 0.3,
-          maxOutputTokens: 1000
+          maxOutputTokens: 2000
         }
       }),
     });
@@ -171,12 +264,25 @@ Always respond with valid JSON in the exact format specified above.`;
     
     try {
       const parsedResponse = JSON.parse(geminiText);
-      return parsedResponse;
+      
+      // Ensure required fields exist
+      return {
+        type: parsedResponse.type || 'text',
+        content: parsedResponse.content || geminiText,
+        chartSpec: parsedResponse.chartSpec,
+        actions: parsedResponse.actions || [],
+        insights: parsedResponse.insights || []
+      };
     } catch (parseError) {
-      // Fallback to text response if JSON parsing fails
+      // Fallback response with enhanced structure
       return {
         type: 'text',
-        content: geminiText
+        content: `Based on your query about "${message}", here's what I found:\n\n${geminiText}`,
+        actions: [
+          { label: "Show detailed breakdown", query: `Show me a detailed breakdown of ${message}` },
+          { label: "Compare with last period", query: `Compare ${message} with previous period` }
+        ],
+        insights: ["Analysis completed successfully"]
       };
     }
     
@@ -184,7 +290,13 @@ Always respond with valid JSON in the exact format specified above.`;
     console.error('Gemini API error:', error);
     return {
       type: 'text',
-      content: 'I can help you with data queries, insights, and staff operations. What would you like to know about your business data?'
+      content: 'I can help you analyze business data, sales performance, inventory levels, and customer insights. What specific metrics would you like to explore?',
+      actions: [
+        { label: "Today's Sales Summary", query: "Show me today's sales summary" },
+        { label: "Low Stock Alerts", query: "What products are low in stock?" },
+        { label: "Top Performing Products", query: "Show top performing products" }
+      ],
+      insights: ["Ready to analyze your business data"]
     };
   }
 }
