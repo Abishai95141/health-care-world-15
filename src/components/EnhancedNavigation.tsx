@@ -1,217 +1,264 @@
 
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  ShoppingCart, 
-  User, 
-  Menu, 
-  X, 
-  Search, 
-  Phone, 
-  MapPin, 
-  Clock,
-  Heart,
-  BookOpen
-} from 'lucide-react';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { useCart } from '@/hooks/useCart';
+import { ShoppingCart, User, Search, Menu, X, ChevronDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import MobileDrawer from './MobileDrawer';
+import { useCart } from '@/hooks/useCart';
+import { useIsMobile } from '@/hooks/use-mobile';
+import MobileDrawer from '@/components/MobileDrawer';
 
 const EnhancedNavigation = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
-  const location = useLocation();
   const navigate = useNavigate();
-  const { cartItems } = useCart();
+  const location = useLocation();
   const { user, signOut } = useAuth();
+  const { totalItems } = useCart();
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [cartPulse, setCartPulse] = useState(false);
+  const [isCategoriesDropdownOpen, setIsCategoriesDropdownOpen] = useState(false);
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+  const isMobile = useIsMobile();
 
-  const cartItemsCount = cartItems.reduce((total, item) => total + item.quantity, 0);
-
+  // Track scroll position for navbar animation
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
+      const scrollTop = window.scrollY;
+      setIsScrolled(scrollTop > 100);
     };
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Pulse cart when items change
+  useEffect(() => {
+    if (totalItems > 0) {
+      setCartPulse(true);
+      const timer = setTimeout(() => setCartPulse(false), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [totalItems]);
+
   const handleSignOut = async () => {
     await signOut();
     navigate('/');
   };
 
-  const handleNavigate = (path: string) => {
-    navigate(path);
-    setIsOpen(false);
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const query = (e.target as HTMLFormElement).search.value;
+    if (query) {
+      navigate('/shop');
+    }
   };
 
-  const handleHelp = () => {
-    // You can implement help functionality here
-    console.log('Help requested');
-    setIsOpen(false);
-  };
-
-  const navItems = [
-    { name: 'Home', path: '/' },
-    { name: 'Shop', path: '/shop' },
-    { name: 'Blog', path: '/blog' },
-    { name: 'About', path: '/about' },
-    { name: 'Contact', path: '/contact' },
-  ];
-
-  // Sample categories - you might want to fetch these from your products/categories API
-  const categories = [
-    'Health & Wellness',
-    'Medications',
-    'Personal Care',
-    'Vitamins & Supplements',
-    'Medical Devices',
-    'Baby Care'
-  ];
+  const isProfilePage = location.pathname === '/profile';
+  const categories = ['Prescription', 'OTC & Wellness', 'Vitamins & Supplements', 'Medical Devices'];
 
   return (
     <>
-      {/* Top Bar */}
-      <div className="bg-[#10B981] text-white py-2 text-sm">
-        <div className="container mx-auto px-4 flex flex-wrap items-center justify-between">
-          <div className="flex items-center space-x-6">
-            <div className="flex items-center space-x-2">
-              <Phone className="w-4 h-4" />
-              <span>+91 9876543210</span>
+      <header className={`
+        fixed top-0 w-full z-50 transition-all duration-300 ease-out
+        ${isScrolled 
+          ? 'bg-white/95 backdrop-blur-md shadow-lg h-14' 
+          : 'bg-white border-b border-gray-100 h-16'
+        }
+      `}>
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <div className={`
+            flex justify-between items-center transition-all duration-300
+            ${isScrolled ? 'h-14' : 'h-16'}
+          `}>
+            {/* Mobile Hamburger Menu */}
+            <div className="md:hidden flex items-center">
+              <button
+                onClick={() => setIsMobileDrawerOpen(true)}
+                className="p-3 text-black hover:text-gray-600 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-black/10 rounded-xl transition-all duration-200"
+              >
+                <Menu className="h-6 w-6" />
+              </button>
             </div>
-            <div className="flex items-center space-x-2">
-              <MapPin className="w-4 h-4" />
-              <span>123 Health Street, Wellness City</span>
+
+            {/* Logo with improved spacing */}
+            <div className="flex items-center mr-8">
+              <button
+                onClick={() => navigate('/')}
+                className={`
+                  font-light text-black hover:text-gray-700 transition-all duration-200 tracking-tight
+                  ${isScrolled ? 'text-xl' : 'text-2xl'}
+                `}
+              >
+                HealthCareWorld
+              </button>
             </div>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Clock className="w-4 h-4" />
-            <span>Mon-Sat: 9AM-9PM</span>
-          </div>
-        </div>
-      </div>
 
-      {/* Main Navigation */}
-      <nav className={`sticky top-0 z-50 transition-all duration-300 ${
-        isScrolled ? 'bg-white shadow-lg' : 'bg-white'
-      }`}>
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo */}
-            <Link to="/" className="flex items-center space-x-2">
-              <div className="w-10 h-10 bg-[#10B981] rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-lg">H</span>
-              </div>
-              <span className="text-xl font-bold text-gray-900">HealthCareWorld</span>
-            </Link>
-
-            {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center space-x-8">
-              {navItems.map((item) => (
-                <Link
-                  key={item.name}
-                  to={item.path}
-                  className={`text-gray-700 hover:text-[#10B981] transition-colors duration-200 font-medium ${
-                    location.pathname === item.path ? 'text-[#10B981]' : ''
-                  }`}
+            {/* Desktop Navigation Links with improved spacing */}
+            <nav className="hidden md:flex space-x-12 flex-1">
+              {[
+                { path: '/', label: 'Home' },
+                { path: '/shop', label: 'Shop' },
+                { path: '/about-us', label: 'About' },
+                { path: '/contact-us', label: 'Contact' }
+              ].map((item) => (
+                <button
+                  key={item.path}
+                  onClick={() => navigate(item.path)}
+                  className={`
+                    relative px-3 py-2 text-sm font-medium transition-all duration-300
+                    text-black/70 hover:text-black
+                    after:content-[''] after:absolute after:w-full after:h-0.5 after:bg-black
+                    after:left-0 after:bottom-0 after:scale-x-0 after:origin-left
+                    after:transition-transform after:duration-300
+                    hover:after:scale-x-100
+                    ${location.pathname === item.path ? 'text-black after:scale-x-100' : ''}
+                  `}
                 >
-                  {item.name}
-                </Link>
+                  {item.label}
+                </button>
               ))}
-            </div>
-
-            {/* Right Side Actions */}
-            <div className="flex items-center space-x-4">
-              {/* Search */}
-              <Button variant="ghost" size="sm" className="hidden md:flex">
-                <Search className="w-5 h-5" />
-              </Button>
-
-              {/* Wishlist */}
-              {user && (
-                <Link to="/wishlist">
-                  <Button variant="ghost" size="sm">
-                    <Heart className="w-5 h-5" />
-                  </Button>
-                </Link>
-              )}
-
-              {/* Cart */}
-              <Link to="/cart" className="relative">
-                <Button variant="ghost" size="sm">
-                  <ShoppingCart className="w-5 h-5" />
-                  {cartItemsCount > 0 && (
-                    <Badge className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 bg-[#10B981]">
-                      {cartItemsCount}
-                    </Badge>
-                  )}
-                </Button>
-              </Link>
-
-              {/* User Menu */}
-              {user ? (
-                <div className="relative group">
-                  <Button variant="ghost" size="sm">
-                    <User className="w-5 h-5" />
-                  </Button>
-                  <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-md shadow-lg border opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                    <div className="py-1">
-                      <Link
-                        to="/profile"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Profile
-                      </Link>
-                      <Link
-                        to="/orders"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Orders
-                      </Link>
+              
+              {/* Categories Dropdown */}
+              <div className="relative">
+                <button 
+                  onClick={() => setIsCategoriesDropdownOpen(!isCategoriesDropdownOpen)}
+                  className="relative flex items-center px-3 py-2 text-sm font-medium text-black/70 hover:text-black transition-all duration-300
+                            after:content-[''] after:absolute after:w-full after:h-0.5 after:bg-black
+                            after:left-0 after:bottom-0 after:scale-x-0 after:origin-left
+                            after:transition-transform after:duration-300
+                            hover:after:scale-x-100"
+                >
+                  Categories
+                  <ChevronDown className={`ml-2 h-4 w-4 transition-transform duration-200 ${isCategoriesDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {isCategoriesDropdownOpen && (
+                  <div className="absolute top-full left-0 mt-2 w-56 bg-white border border-gray-100 rounded-xl shadow-xl z-10 animate-fade-in overflow-hidden">
+                    {categories.map((category, index) => (
                       <button
-                        onClick={handleSignOut}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        key={category}
+                        onClick={() => {
+                          navigate('/shop');
+                          setIsCategoriesDropdownOpen(false);
+                        }}
+                        className="block w-full text-left px-6 py-3 text-sm text-black/70 hover:bg-gray-50 hover:text-black transition-all duration-200 border-b border-gray-50 last:border-0"
                       >
-                        Sign Out
+                        {category}
                       </button>
-                    </div>
+                    ))}
                   </div>
+                )}
+              </div>
+            </nav>
+
+            {/* Search Bar - Desktop with improved styling */}
+            <div className="hidden sm:flex flex-1 max-w-lg mx-8">
+              <form onSubmit={handleSearch} className="relative w-full">
+                <Input 
+                  name="search"
+                  placeholder="Search medicines, brands..." 
+                  className={`
+                    pl-12 pr-4 py-3 w-full bg-gray-50 border-0 rounded-full 
+                    focus:ring-2 focus:ring-black/10 focus:bg-white
+                    transition-all duration-300 ease-out text-sm
+                    ${isSearchFocused ? 'scale-105 shadow-lg' : ''}
+                  `}
+                  onFocus={() => setIsSearchFocused(true)}
+                  onBlur={() => setIsSearchFocused(false)}
+                />
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-black/40 h-5 w-5" />
+              </form>
+            </div>
+            
+            {/* Right side actions with improved spacing */}
+            <div className="flex items-center space-x-4">
+              {/* Cart */}
+              <button
+                onClick={() => navigate('/cart')}
+                className={`
+                  relative p-3 text-black hover:text-black/70 hover:scale-110
+                  focus:outline-none focus:ring-2 focus:ring-black/10 rounded-xl 
+                  transition-all duration-200
+                  ${cartPulse ? 'animate-pulse' : ''}
+                `}
+              >
+                <ShoppingCart className="h-6 w-6" />
+                {totalItems > 0 && (
+                  <span className={`
+                    absolute -top-1 -right-1 bg-black text-white text-xs rounded-full h-5 w-5 
+                    flex items-center justify-center transition-all duration-200 font-medium
+                    ${cartPulse ? 'animate-bounce scale-125' : ''}
+                  `}>
+                    {totalItems}
+                  </span>
+                )}
+              </button>
+
+              {/* User menu */}
+              {user ? (
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={() => navigate('/profile')}
+                    className="p-3 text-black hover:text-black/70 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-black/10 rounded-xl transition-all duration-200"
+                  >
+                    <User className="h-6 w-6" />
+                  </button>
+                  {isProfilePage && (
+                    <button
+                      onClick={() => navigate('/')}
+                      className="p-3 text-black hover:text-red-600 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-red-500/20 rounded-xl transition-all duration-200"
+                    >
+                      <X className="h-6 w-6" />
+                    </button>
+                  )}
+                  <Button
+                    onClick={handleSignOut}
+                    variant="outline"
+                    size="sm"
+                    className="hover:scale-105 hover:bg-gray-50 border-gray-200 transition-all duration-200 hidden sm:block px-6 py-2 rounded-full"
+                  >
+                    Sign Out
+                  </Button>
                 </div>
               ) : (
-                <Link to="/auth">
-                  <Button size="sm" className="bg-[#10B981] hover:bg-[#059669]">
-                    Sign In
-                  </Button>
-                </Link>
+                <Button
+                  onClick={() => navigate('/auth')}
+                  className="bg-black hover:bg-gray-800 hover:scale-105 transition-all duration-200 hidden sm:block px-6 py-2 rounded-full"
+                >
+                  Sign In
+                </Button>
               )}
-
-              {/* Mobile Menu Button */}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="md:hidden"
-                onClick={() => setIsOpen(true)}
-              >
-                <Menu className="w-5 h-5" />
-              </Button>
             </div>
           </div>
         </div>
-      </nav>
 
-      {/* Mobile Navigation Drawer */}
+        {/* Mobile Search Bar - Updated styling */}
+        <div className="sm:hidden border-t border-gray-100 p-4 bg-white z-40 relative">
+          <form onSubmit={handleSearch} className="relative">
+            <Input 
+              name="search"
+              placeholder="Search medicines, brands..." 
+              className="pl-12 pr-4 py-3 w-full bg-gray-50 border-0 rounded-full focus:ring-2 focus:ring-black/10 focus:bg-white"
+            />
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-black/40 h-5 w-5" />
+          </form>
+        </div>
+      </header>
+
+      {/* Mobile Drawer */}
       <MobileDrawer 
-        isOpen={isOpen} 
-        onClose={() => setIsOpen(false)}
+        isOpen={isMobileDrawerOpen}
+        onClose={() => setIsMobileDrawerOpen(false)}
         user={user}
-        cartItemCount={cartItemsCount}
+        cartItemCount={totalItems}
         categories={categories}
-        onNavigate={handleNavigate}
-        onHelp={handleHelp}
+        onNavigate={(path) => {
+          navigate(path);
+          setIsMobileDrawerOpen(false);
+        }}
+        onHelp={() => {
+          setIsMobileDrawerOpen(false);
+        }}
       />
     </>
   );
