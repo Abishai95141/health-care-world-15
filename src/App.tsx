@@ -18,8 +18,6 @@ import OrderConfirmation from '@/pages/OrderConfirmation';
 import AboutUs from '@/pages/AboutUs';
 import ContactUs from '@/pages/ContactUs';
 import Wishlist from '@/pages/Wishlist';
-import Blog from '@/pages/Blog';
-import BlogPost from '@/pages/BlogPost';
 import NotFound from '@/pages/NotFound';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import StaffProtectedRoute from '@/components/staff/StaffProtectedRoute';
@@ -38,7 +36,6 @@ import AdvertisementManagement from '@/pages/staff/AdvertisementManagement';
 import ManageOrders from '@/pages/staff/ManageOrders';
 import ManagePurchaseOrders from '@/pages/staff/ManagePurchaseOrders';
 import NewPurchaseOrder from '@/pages/staff/NewPurchaseOrder';
-import BlogPostsList from '@/components/staff/blog/BlogPostsList';
 import AccountSettings from '@/pages/AccountSettings';
 import ChatWidget from '@/components/ChatWidget';
 
@@ -64,8 +61,6 @@ function App() {
                 <Route path="/auth" element={<Layout><Auth /></Layout>} />
                 <Route path="/shop" element={<Layout><Shop /></Layout>} />
                 <Route path="/product/:slug" element={<Layout><ProductDetail /></Layout>} />
-                <Route path="/blog" element={<Layout><Blog /></Layout>} />
-                <Route path="/blog/:slug" element={<Layout><BlogPost /></Layout>} />
                 <Route path="/about-us" element={<Layout><AboutUs /></Layout>} />
                 <Route path="/contact-us" element={<Layout><ContactUs /></Layout>} />
                 <Route path="/cart" element={<Layout><CartPage /></Layout>} />
@@ -191,14 +186,6 @@ function App() {
                   element={
                     <StaffProtectedRoute>
                       <StaffLayout><AdvertisementManagement /></StaffLayout>
-                    </StaffProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/staff/blog" 
-                  element={
-                    <StaffProtectedRoute>
-                      <StaffLayout><BlogPostsList /></StaffLayout>
                     </StaffProtectedRoute>
                   } 
                 />
