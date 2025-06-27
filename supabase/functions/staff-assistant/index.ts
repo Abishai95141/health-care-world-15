@@ -79,8 +79,33 @@ async function getComprehensiveContext(query: string): Promise<string> {
     const contexts: string[] = [];
     const queryLower = query.toLowerCase();
     
-    // Always get recent sales summary for context
-    const { data: recentOrders } = await supabase
+    // Get current date and time information
+    const now = new Date();
+    const currentDate = now.toISOString().split('T')[0];
+    
+    // Define precise date ranges
+    const thisWeekStart = new Date(now);
+    thisWeekStart.setDate(now.getDate() - now.getDay()); // Start of this week (Sunday)
+    thisWeekStart.setHours(0, 0, 0, 0);
+    
+    const lastWeekStart = new Date(now);
+    lastWeekStart.setDate(now.getDate() - now.getDay() - 7); // Start of last week
+    lastWeekStart.setHours(0, 0, 0, 0);
+    
+    const lastWeekEnd = new Date(now);
+    lastWeekEnd.setDate(now.getDate() - now.getDay()); // End of last week
+    lastWeekEnd.setHours(0, 0, 0, 0);
+    
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 1);
+    
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterdayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+    const yesterdayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    // Get orders data - always fetch comprehensive data
+    const { data: orders } = await supabase
       .from('orders')
       .select(`
         id, total_amount, shipping_amount, status, payment_status, created_at,
@@ -90,23 +115,106 @@ async function getComprehensiveContext(query: string): Promise<string> {
         )
       `)
       .eq('status', 'confirmed')
-      .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
       .order('created_at', { ascending: false })
-      .limit(50);
+      .limit(2000); // Fetch more comprehensive data
 
-    if (recentOrders) {
-      const totalRevenue = recentOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
-      const totalOrders = recentOrders.length;
+    if (orders && orders.length > 0) {
+      const totalRevenue = orders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
+      const totalOrders = orders.length;
       const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
       
-      contexts.push(`Recent 7 Days Sales Summary:
+      const startDate = orders.length > 0 ? 
+        new Date(Math.min(...orders.map(o => new Date(o.created_at).getTime()))).toLocaleDateString() : 
+        'N/A';
+      const endDate = orders.length > 0 ? 
+        new Date(Math.max(...orders.map(o => new Date(o.created_at).getTime()))).toLocaleDateString() : 
+        'N/A';
+      
+      contexts.push(`Sales Summary (All Time Dataset):
         - Total Revenue: ₹${totalRevenue.toFixed(2)}
         - Total Orders: ${totalOrders}
         - Average Order Value: ₹${avgOrderValue.toFixed(2)}
-        - Sample Recent Orders: ${JSON.stringify(recentOrders.slice(0, 3))}`);
+        - Data Range: ${startDate} to ${endDate}
+        - Current Date: ${currentDate}`);
+        
+      // For comparison queries, provide both periods with precise filtering
+      if (queryLower.includes('compare') || queryLower.includes('week') || queryLower.includes('vs')) {
+        const thisWeekOrders = orders.filter(order => {
+          const orderDate = new Date(order.created_at);
+          return orderDate >= thisWeekStart;
+        });
+        
+        const lastWeekOrders = orders.filter(order => {
+          const orderDate = new Date(order.created_at);
+          return orderDate >= lastWeekStart && orderDate < lastWeekEnd;
+        });
+        
+        const thisWeekRevenue = thisWeekOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
+        const lastWeekRevenue = lastWeekOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
+        
+        const growthRate = lastWeekRevenue > 0 ? ((thisWeekRevenue - lastWeekRevenue) / lastWeekRevenue * 100) : 0;
+        
+        contexts.push(`Weekly Comparison Data:
+          - This Week (${thisWeekStart.toLocaleDateString()} onwards): ${thisWeekOrders.length} orders, ₹${thisWeekRevenue.toFixed(2)} revenue
+          - Last Week (${lastWeekStart.toLocaleDateString()} to ${lastWeekEnd.toLocaleDateString()}): ${lastWeekOrders.length} orders, ₹${lastWeekRevenue.toFixed(2)} revenue
+          - Growth Rate: ${growthRate.toFixed(1)}%
+          - This Week Orders: ${JSON.stringify(thisWeekOrders.slice(0, 5))}
+          - Last Week Orders: ${JSON.stringify(lastWeekOrders.slice(0, 5))}`);
+      }
+      
+      // Handle specific time range queries
+      if (queryLower.includes('today')) {
+        const todayOrders = orders.filter(order => {
+          const orderDate = new Date(order.created_at);
+          return orderDate >= todayStart;
+        });
+        const todayRevenue = todayOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
+        
+        contexts.push(`Today's Data (${todayStart.toLocaleDateString()}):
+          - Orders: ${todayOrders.length}
+          - Revenue: ₹${todayRevenue.toFixed(2)}
+          - Details: ${JSON.stringify(todayOrders.slice(0, 3))}`);
+      }
+      
+      if (queryLower.includes('yesterday')) {
+        const yesterdayOrders = orders.filter(order => {
+          const orderDate = new Date(order.created_at);
+          return orderDate >= yesterdayStart && orderDate < yesterdayEnd;
+        });
+        const yesterdayRevenue = yesterdayOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
+        
+        contexts.push(`Yesterday's Data (${yesterdayStart.toLocaleDateString()}):
+          - Orders: ${yesterdayOrders.length}
+          - Revenue: ₹${yesterdayRevenue.toFixed(2)}
+          - Details: ${JSON.stringify(yesterdayOrders.slice(0, 3))}`);
+      }
+      
+      if (queryLower.includes('this month')) {
+        const thisMonthOrders = orders.filter(order => {
+          const orderDate = new Date(order.created_at);
+          return orderDate >= thisMonthStart;
+        });
+        const thisMonthRevenue = thisMonthOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
+        
+        contexts.push(`This Month's Data (${thisMonthStart.toLocaleDateString()} onwards):
+          - Orders: ${thisMonthOrders.length}
+          - Revenue: ₹${thisMonthRevenue.toFixed(2)}`);
+      }
+      
+      if (queryLower.includes('last month')) {
+        const lastMonthOrders = orders.filter(order => {
+          const orderDate = new Date(order.created_at);
+          return orderDate >= lastMonthStart && orderDate < lastMonthEnd;
+        });
+        const lastMonthRevenue = lastMonthOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
+        
+        contexts.push(`Last Month's Data (${lastMonthStart.toLocaleDateString()} to ${lastMonthEnd.toLocaleDateString()}):
+          - Orders: ${lastMonthOrders.length}
+          - Revenue: ₹${lastMonthRevenue.toFixed(2)}`);
+      }
     }
 
-    // Get product performance data
+    // Get product performance data when relevant
     if (queryLower.includes('product') || queryLower.includes('inventory') || queryLower.includes('stock') || queryLower.includes('top') || queryLower.includes('best')) {
       const { data: products } = await supabase
         .from('products')
@@ -116,7 +224,7 @@ async function getComprehensiveContext(query: string): Promise<string> {
         `)
         .eq('is_active', true)
         .order('created_at', { ascending: false })
-        .limit(20);
+        .limit(100);
       
       if (products) {
         const productsWithStats = products.map(product => {
@@ -133,35 +241,35 @@ async function getComprehensiveContext(query: string): Promise<string> {
           };
         });
         
-        contexts.push(`Product Performance Data: ${JSON.stringify(productsWithStats)}`);
+        contexts.push(`Product Performance Data: ${JSON.stringify(productsWithStats.slice(0, 20))}`);
       }
     }
 
-    // Get customer analytics
+    // Get customer analytics when relevant
     if (queryLower.includes('customer') || queryLower.includes('user') || queryLower.includes('profile')) {
       const { data: customerStats } = await supabase
         .rpc('get_customer_stats');
       
-      const { data: recentProfiles } = await supabase
+      const { data: allProfiles } = await supabase
         .from('profiles')
         .select('id, full_name, email, created_at')
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(50);
       
-      if (customerStats && recentProfiles) {
+      if (customerStats || allProfiles) {
         contexts.push(`Customer Analytics:
           - Stats: ${JSON.stringify(customerStats)}
-          - Recent Customers: ${JSON.stringify(recentProfiles)}`);
+          - Recent Customers: ${JSON.stringify(allProfiles?.slice(0, 10))}`);
       }
     }
 
     // Get category and brand performance
     if (queryLower.includes('category') || queryLower.includes('brand') || queryLower.includes('performance')) {
       const { data: topCategories } = await supabase
-        .rpc('get_top_categories', { limit_count: 10 });
+        .rpc('get_top_categories', { limit_count: 20 });
       
       const { data: topBrands } = await supabase
-        .rpc('get_top_brands', { limit_count: 10 });
+        .rpc('get_top_brands', { limit_count: 20 });
       
       if (topCategories || topBrands) {
         contexts.push(`Performance Data:
@@ -200,6 +308,7 @@ CORE PRINCIPLES:
 3. Return structured JSON responses with appropriate visualizations
 4. Suggest relevant follow-up actions after each response
 5. Ask clarifying questions when queries are ambiguous
+6. When summarizing data, always mention the actual date range from the data, not assumptions
 
 RESPONSE FORMAT:
 Always return valid JSON with these fields:
@@ -212,15 +321,49 @@ Always return valid JSON with these fields:
 DATA ANALYSIS RULES:
 - For sales queries: compute revenue, order count, AOV, growth rates
 - For product queries: include stock levels, ratings, performance metrics
-- For time-based queries: assume last 7 days if no range specified, and mention this assumption
+- For time-based queries: use the EXACT data provided in context
 - Always highlight trends, anomalies, and key insights
 - Include actual numbers and percentages in narratives
+- NEVER assume date ranges - use the actual data provided
+- For comparison queries, provide specific metrics for both periods
 
 CHART SPECIFICATIONS:
 - Use Recharts format for chartSpec
-- Common chart types: LineChart, BarChart, PieChart, AreaChart
+- Supported chart types: line, bar, pie, area, radialbar, gauge, funnel, scatter, composed
 - Include proper data arrays and configuration
 - Make charts meaningful and insightful
+- For weekly comparisons, use bar charts with multiple series
+- Example chartSpec format for weekly comparison:
+  {
+    "type": "bar",
+    "data": [
+      {"period": "This Week", "revenue": 12000, "orders": 45},
+      {"period": "Last Week", "revenue": 8000, "orders": 32}
+    ],
+    "xKey": "period",
+    "yKey": "revenue",
+    "yKey2": "orders"
+  }
+
+WEEKLY COMPARISON CHART RULES:
+- ALWAYS return type="chart" for weekly comparison queries
+- Create chartSpec with both periods showing revenue and orders
+- Use proper data structure with distinct periods
+- Include both yKey (revenue) and yKey2 (orders) for dual-axis charts
+- Example for "Compare this week vs last week":
+  {
+    "type": "chart",
+    "chartSpec": {
+      "type": "bar",
+      "data": [
+        {"period": "This Week", "revenue": [actual_this_week_revenue], "orders": [actual_this_week_orders]},
+        {"period": "Last Week", "revenue": [actual_last_week_revenue], "orders": [actual_last_week_orders]}
+      ],
+      "xKey": "period",
+      "yKey": "revenue",
+      "yKey2": "orders"
+    }
+  }
 
 FOLLOW-UP ACTIONS:
 - Suggest 2-3 relevant next steps as quick-reply buttons
@@ -230,6 +373,13 @@ FOLLOW-UP ACTIONS:
 Current data context: ${context}
 
 Previous conversation context: ${JSON.stringify(previousContext || {})}
+
+IMPORTANT: 
+- Always provide actual figures from the data
+- If data shows zero values, report them accurately and suggest reasons or alternative queries
+- For weekly comparisons, ALWAYS create charts that show both periods clearly with different colors
+- Extract real numbers from the context data and use them in your response
+- If asked about weekly comparison, extract the actual revenue and order numbers from the context and create a proper chartSpec
 
 Respond only with valid JSON in the exact format specified.`;
 
@@ -242,7 +392,7 @@ Respond only with valid JSON in the exact format specified.`;
       body: JSON.stringify({
         contents: [{
           parts: [{
-            text: `${systemPrompt}\n\nUser Query: ${message}\n\nProvide a comprehensive analysis with narrative, data, and actionable insights in JSON format.`
+            text: `${systemPrompt}\n\nUser Query: ${message}\n\nProvide a comprehensive analysis with narrative, data, and actionable insights in JSON format. Include chartSpec for visualizations when appropriate.`
           }]
         }],
         generationConfig: {
@@ -280,7 +430,7 @@ Respond only with valid JSON in the exact format specified.`;
         content: `Based on your query about "${message}", here's what I found:\n\n${geminiText}`,
         actions: [
           { label: "Show detailed breakdown", query: `Show me a detailed breakdown of ${message}` },
-          { label: "Compare with last period", query: `Compare ${message} with previous period` }
+          { label: "Compare with different period", query: `Compare ${message} with different time periods` }
         ],
         insights: ["Analysis completed successfully"]
       };
@@ -292,9 +442,10 @@ Respond only with valid JSON in the exact format specified.`;
       type: 'text',
       content: 'I can help you analyze business data, sales performance, inventory levels, and customer insights. What specific metrics would you like to explore?',
       actions: [
-        { label: "Today's Sales Summary", query: "Show me today's sales summary" },
-        { label: "Low Stock Alerts", query: "What products are low in stock?" },
-        { label: "Top Performing Products", query: "Show top performing products" }
+        { label: "Sales Summary", query: "Show me comprehensive sales summary" },
+        { label: "Current Stock Status", query: "What's our current inventory status?" },
+        { label: "Product Performance", query: "Show top performing products" },
+        { label: "Weekly Comparison", query: "Compare this week vs last week sales performance" }
       ],
       insights: ["Ready to analyze your business data"]
     };

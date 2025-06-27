@@ -9,7 +9,30 @@ interface CategoryPerformanceChartProps {
   onCategoryClick: (category: string) => void;
 }
 
-const COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'];
+const COLORS = [
+  '#10B981', // Green for OTC & Wellness
+  '#3B82F6', // Blue for Prescription
+  '#F59E0B', // Orange for Vitamins & Supplements
+  '#EF4444', // Red for Medical Devices
+  '#8B5CF6', // Purple for Personal Care
+  '#06B6D4', // Cyan for Baby Care
+  '#EC4899', // Pink for Beauty & Cosmetics
+  '#84CC16', // Lime for Health Foods
+  '#F97316', // Orange for Fitness & Sports
+  '#6366F1'  // Indigo for Others
+];
+
+const CATEGORY_COLOR_MAP = {
+  'OTC & Wellness': '#10B981',
+  'Prescription': '#3B82F6', 
+  'Vitamins & Supplements': '#F59E0B',
+  'Medical Devices': '#EF4444',
+  'Personal Care': '#8B5CF6',
+  'Baby Care': '#06B6D4',
+  'Beauty & Cosmetics': '#EC4899',
+  'Health Foods': '#84CC16',
+  'Fitness & Sports': '#F97316'
+};
 
 export const CategoryPerformanceChart = ({ onCategoryClick }: CategoryPerformanceChartProps) => {
   const { data: categoryData, isLoading } = useQuery({
@@ -22,7 +45,7 @@ export const CategoryPerformanceChart = ({ onCategoryClick }: CategoryPerformanc
         name: item.category,
         value: item.total_revenue || 0,
         sales: item.total_sales || 0,
-        color: COLORS[index % COLORS.length]
+        color: CATEGORY_COLOR_MAP[item.category as keyof typeof CATEGORY_COLOR_MAP] || COLORS[index % COLORS.length]
       })) || [];
     }
   });
@@ -40,14 +63,6 @@ export const CategoryPerformanceChart = ({ onCategoryClick }: CategoryPerformanc
     }
     return null;
   };
-
-  const CustomCell = ({ payload, ...props }: any) => (
-    <Cell 
-      {...props}
-      className="cursor-pointer hover:opacity-80 transition-opacity duration-200"
-      onClick={() => onCategoryClick(payload.name)}
-    />
-  );
 
   if (isLoading) {
     return (
@@ -73,12 +88,14 @@ export const CategoryPerformanceChart = ({ onCategoryClick }: CategoryPerformanc
             innerRadius={40}
             paddingAngle={2}
             dataKey="value"
+            onClick={(data) => onCategoryClick(data.name)}
+            className="cursor-pointer"
           >
             {categoryData?.map((entry, index) => (
-              <CustomCell 
+              <Cell 
                 key={`cell-${index}`} 
                 fill={entry.color}
-                payload={entry}
+                className="hover:opacity-80 transition-opacity duration-200"
               />
             ))}
           </Pie>
