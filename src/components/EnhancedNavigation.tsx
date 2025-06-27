@@ -44,12 +44,33 @@ const EnhancedNavigation = () => {
     navigate('/');
   };
 
+  const handleNavigate = (path: string) => {
+    navigate(path);
+    setIsOpen(false);
+  };
+
+  const handleHelp = () => {
+    // You can implement help functionality here
+    console.log('Help requested');
+    setIsOpen(false);
+  };
+
   const navItems = [
     { name: 'Home', path: '/' },
     { name: 'Shop', path: '/shop' },
     { name: 'Blog', path: '/blog' },
     { name: 'About', path: '/about' },
     { name: 'Contact', path: '/contact' },
+  ];
+
+  // Sample categories - you might want to fetch these from your products/categories API
+  const categories = [
+    'Health & Wellness',
+    'Medications',
+    'Personal Care',
+    'Vitamins & Supplements',
+    'Medical Devices',
+    'Baby Care'
   ];
 
   return (
@@ -183,7 +204,15 @@ const EnhancedNavigation = () => {
       </nav>
 
       {/* Mobile Navigation Drawer */}
-      <MobileDrawer isOpen={isOpen} onClose={() => setIsOpen(false)} />
+      <MobileDrawer 
+        isOpen={isOpen} 
+        onClose={() => setIsOpen(false)}
+        user={user}
+        cartItemCount={cartItemsCount}
+        categories={categories}
+        onNavigate={handleNavigate}
+        onHelp={handleHelp}
+      />
     </>
   );
 };
