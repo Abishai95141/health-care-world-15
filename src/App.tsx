@@ -2,7 +2,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { StaffAuthProvider } from "@/contexts/StaffAuthContext";
 import { BannerProvider } from "@/contexts/BannerContext";
@@ -53,47 +53,45 @@ function App() {
           <StaffAuthProvider>
             <BannerProvider>
               <Toaster />
-              <BrowserRouter>
-                <Routes>
-                  {/* Public routes */}
-                  <Route path="/" element={<Index />} />
-                  <Route path="/shop" element={<Shop />} />
-                  <Route path="/product/:slug" element={<ProductDetail />} />
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/about" element={<AboutUs />} />
-                  <Route path="/contact" element={<ContactUs />} />
-                  <Route path="/blog" element={<Blog />} />
-                  <Route path="/blog/:slug" element={<BlogPost />} />
-                  
-                  {/* Protected routes */}
-                  <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-                  <Route path="/account" element={<ProtectedRoute><AccountSettings /></ProtectedRoute>} />
-                  <Route path="/cart" element={<CartPage />} />
-                  <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
-                  <Route path="/order-confirmation" element={<ProtectedRoute><OrderConfirmation /></ProtectedRoute>} />
-                  <Route path="/wishlist" element={<ProtectedRoute><Wishlist /></ProtectedRoute>} />
-                  
-                  {/* Staff routes */}
-                  <Route path="/staff/login" element={<StaffLogin />} />
-                  <Route path="/staff/dashboard" element={<StaffProtectedRoute><StaffDashboard /></StaffProtectedRoute>} />
-                  <Route path="/staff/products" element={<StaffProtectedRoute><ManageProducts /></StaffProtectedRoute>} />
-                  <Route path="/staff/products/add" element={<StaffProtectedRoute><AddProduct /></StaffProtectedRoute>} />
-                  <Route path="/staff/products/edit/:id" element={<StaffProtectedRoute><EditProduct /></StaffProtectedRoute>} />
-                  <Route path="/staff/orders" element={<StaffProtectedRoute><ManageOrders /></StaffProtectedRoute>} />
-                  <Route path="/staff/analytics" element={<StaffProtectedRoute><Analytics /></StaffProtectedRoute>} />
-                  <Route path="/staff/bulk-import" element={<StaffProtectedRoute><BulkImport /></StaffProtectedRoute>} />
-                  <Route path="/staff/inventory-alerts" element={<StaffProtectedRoute><InventoryAlerts /></StaffProtectedRoute>} />
-                  <Route path="/staff/purchase-orders" element={<StaffProtectedRoute><ManagePurchaseOrders /></StaffProtectedRoute>} />
-                  <Route path="/staff/purchase-orders/new" element={<StaffProtectedRoute><NewPurchaseOrder /></StaffProtectedRoute>} />
-                  <Route path="/staff/advertisements" element={<StaffProtectedRoute><AdvertisementManagement /></StaffProtectedRoute>} />
-                  <Route path="/staff/banners" element={<StaffProtectedRoute><BannerManagement /></StaffProtectedRoute>} />
-                  <Route path="/staff/data-assistant" element={<StaffProtectedRoute><DataAssistant /></StaffProtectedRoute>} />
-                  <Route path="/staff/blog" element={<StaffProtectedRoute><BlogManagement /></StaffProtectedRoute>} />
-                  
-                  {/* 404 route */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </BrowserRouter>
+              <Routes>
+                {/* Public routes */}
+                <Route path="/" element={<Index />} />
+                <Route path="/shop" element={<Shop />} />
+                <Route path="/product/:slug" element={<ProductDetail />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/about" element={<AboutUs />} />
+                <Route path="/contact" element={<ContactUs />} />
+                <Route path="/blog" element={<Blog />} />
+                <Route path="/blog/:slug" element={<BlogPost />} />
+                
+                {/* Protected routes */}
+                <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                <Route path="/account" element={<ProtectedRoute><AccountSettings /></ProtectedRoute>} />
+                <Route path="/cart" element={<CartPage />} />
+                <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
+                <Route path="/order-confirmation" element={<ProtectedRoute><OrderConfirmation /></ProtectedRoute>} />
+                <Route path="/wishlist" element={<ProtectedRoute><Wishlist /></ProtectedRoute>} />
+                
+                {/* Staff routes */}
+                <Route path="/staff/login" element={<StaffLogin />} />
+                <Route path="/staff/dashboard" element={<StaffProtectedRoute><StaffDashboard /></StaffProtectedRoute>} />
+                <Route path="/staff/products" element={<StaffProtectedRoute><ManageProducts /></StaffProtectedRoute>} />
+                <Route path="/staff/products/add" element={<StaffProtectedRoute><AddProduct /></StaffProtectedRoute>} />
+                <Route path="/staff/products/edit/:id" element={<StaffProtectedRoute><EditProduct /></StaffProtectedRoute>} />
+                <Route path="/staff/orders" element={<StaffProtectedRoute><ManageOrders /></StaffProtectedRoute>} />
+                <Route path="/staff/analytics" element={<StaffProtectedRoute><Analytics /></StaffProtectedRoute>} />
+                <Route path="/staff/bulk-import" element={<StaffProtectedRoute><BulkImport /></StaffProtectedRoute>} />
+                <Route path="/staff/inventory-alerts" element={<StaffProtectedRoute><InventoryAlerts /></StaffProtectedRoute>} />
+                <Route path="/staff/purchase-orders" element={<StaffProtectedRoute><ManagePurchaseOrders /></StaffProtectedRoute>} />
+                <Route path="/staff/purchase-orders/new" element={<StaffProtectedRoute><NewPurchaseOrder /></StaffProtectedRoute>} />
+                <Route path="/staff/advertisements" element={<StaffProtectedRoute><AdvertisementManagement /></StaffProtectedRoute>} />
+                <Route path="/staff/banners" element={<StaffProtectedRoute><BannerManagement /></StaffProtectedRoute>} />
+                <Route path="/staff/data-assistant" element={<StaffProtectedRoute><DataAssistant /></StaffProtectedRoute>} />
+                <Route path="/staff/blog" element={<StaffProtectedRoute><BlogManagement /></StaffProtectedRoute>} />
+                
+                {/* 404 route */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
             </BannerProvider>
           </StaffAuthProvider>
         </AuthProvider>
