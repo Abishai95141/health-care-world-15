@@ -99,6 +99,7 @@ const EnhancedNavigation = () => {
               {[
                 { path: '/', label: 'Home' },
                 { path: '/shop', label: 'Shop' },
+                { path: '/blog', label: 'Blog' },
                 { path: '/about-us', label: 'About' },
                 { path: '/contact-us', label: 'Contact' }
               ].map((item) => (

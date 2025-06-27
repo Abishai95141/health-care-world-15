@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useStaffAuth } from '@/contexts/StaffAuthContext';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
@@ -18,7 +19,8 @@ import {
   Truck,
   Megaphone,
   BarChart3,
-  MessageCircle
+  MessageCircle,
+  BookOpen
 } from 'lucide-react';
 
 interface StaffLayoutProps {
@@ -46,6 +48,7 @@ const StaffLayout = ({ children }: StaffLayoutProps) => {
     { name: 'Inventory Alerts', href: '/staff/inventory', icon: AlertTriangle },
     { name: 'Banner Management', href: '/staff/banners', icon: Building2 },
     { name: 'Advertisements', href: '/staff/advertisements', icon: Megaphone },
+    { name: 'Blog Management', href: '/staff/blog', icon: BookOpen },
     { name: 'Order Management', href: '/staff/orders', icon: ShoppingCart },
     { name: 'Purchase Orders', href: '/staff/purchase-orders', icon: Truck },
   ];
@@ -56,7 +59,7 @@ const StaffLayout = ({ children }: StaffLayoutProps) => {
     <ul className="space-y-2">
       {navigation.map((item) => {
         const Icon = item.icon;
-        const isActive = currentPath === item.href;
+        const isActive = currentPath === item.href || currentPath.startsWith(item.href + '/');
         
         return (
           <li key={item.name}>
